@@ -1,0 +1,60 @@
+# strix-llama.cpp on Vulkan (Mesa RADV) for Strix Halo (gfx1151).
+#
+# Layout follows kyuz0/amd-strix-halo-toolboxes (vulkan-radv). The engine is pinned
+# to a commit; Mesa comes from Fedora 44 (26.2.x at the time of writing).
+#
+#   docker build -f docker/Dockerfile.vulkan .
+
+FROM registry.fedoraproject.org/fedora:44 AS builder
+
+RUN dnf -y --nodocs --setopt=install_weak_deps=False install \
+  make gcc gcc-c++ cmake ninja-build git-core patch \
+  libcurl-devel vulkan-headers vulkan-loader-devel glslc glslang spirv-headers-devel \
+  && dnf clean all && rm -rf /var/cache/dnf/*
+
+ARG LLAMA_REPO=https://github.com/halo-box/strix-llama.cpp.git
+ARG LLAMA_COMMIT=2e7bfc22d2f1b554f023362c709e0844c42d63ef
+WORKDIR /opt/llama.cpp
+# Open PRs merged on top of the pinned commit, as "number:sha" pairs. The build
+# fails if a PR head moved, so an image is always reproducible from its tag.
+ARG LLAMA_PRS=""
+RUN <<'EOF2'
+set -eux
+git clone --filter=blob:none "$LLAMA_REPO" . && git checkout "$LLAMA_COMMIT"
+for pr in $LLAMA_PRS; do
+  n=${pr%%:*}; sha=${pr#*:}
+  git fetch origin "pull/$n/head:pr$n"
+  case "$(git rev-parse "pr$n")" in "$sha"*) ;; *) echo "ERROR: PR $n head is not $sha"; exit 1;; esac
+  git -c user.name=build -c user.email=build@localhost merge --no-edit "pr$n"
+done
+mkdir -p /opt/strix && printf 'prs=%s\n' "${LLAMA_PRS:-none}" >> /opt/strix/versions.txt
+EOF2
+
+COPY docker/patches/llama-grammar.patch /tmp/llama-grammar.patch
+RUN <<'EOF'
+set -eux
+patch -p1 -N --fuzz=3 < /tmp/llama-grammar.patch \
+  || grep -q 'MAX_REPETITION_THRESHOLD 100000' src/llama-grammar.cpp
+cmake -S . -B build -G Ninja -DGGML_VULKAN=ON -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_TESTS=OFF
+cmake --build build --parallel "$(nproc)"
+cmake --install build
+mkdir -p /usr/local/lib64 /opt/strix
+find build -type f -name 'lib*.so*' -exec cp {} /usr/local/lib64/ \;
+printf 'llama_cpp=%s\n' "$(git rev-parse --short HEAD)" >> /opt/strix/versions.txt
+EOF
+
+FROM registry.fedoraproject.org/fedora-minimal:44
+RUN microdnf -y --nodocs --setopt=install_weak_deps=0 install \
+  bash ca-certificates curl libgomp libstdc++ procps-ng \
+  vulkan-loader mesa-vulkan-drivers vulkan-tools \
+  && microdnf clean all && rm -rf /var/cache/dnf/* \
+  && rpm -q --qf 'mesa=%{VERSION}-%{RELEASE}\n' mesa-vulkan-drivers > /tmp/mesa.txt
+
+COPY --from=builder /usr/local/ /usr/local/
+COPY --from=builder /opt/strix/versions.txt /opt/strix/versions.txt
+RUN cat /tmp/mesa.txt >> /opt/strix/versions.txt && rm /tmp/mesa.txt \
+  && echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf \
+  && echo "/usr/local/lib64" >> /etc/ld.so.conf.d/local.conf \
+  && ldconfig && cat /opt/strix/versions.txt
+
+CMD ["/bin/bash"]
