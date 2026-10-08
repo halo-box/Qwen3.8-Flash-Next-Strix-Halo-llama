@@ -14,7 +14,7 @@ if [[ -f "$_env" ]]; then
 fi
 
 # ── Engine ───────────────────────────────────────────────────────────────────
-: "${BACKEND:=rocm10.1-pm4}"          # rocm10.1-pm4 | rocm10.1-pm4-vk | rocm10.1 | rocm10.0-pm4 | vulkan
+: "${BACKEND:=rocm}"                  # rocm (ROCm 10.1 + retained PM4) | vulkan (Mesa RADV)
 : "${IMAGE_REPO:=ghcr.io/halo-box/qwen3.8-flash-next-strix-halo-llama}"
 : "${IMAGE:=$IMAGE_REPO:$BACKEND}"
 : "${LOCAL_IMAGE:=qfn-strix:$BACKEND}" # built by scripts/prepare.sh when the pull fails
@@ -37,8 +37,8 @@ fi
 : "${CONTEXT_PER_SLOT:=262144}"        # cap per slot (--kv-unified-per-slot); the model's native window
 : "${KV_UNIFIED:=1}"                   # 1: one pool any slot can fill; 0: CONTEXT/PARALLEL per slot
 : "${KV_DTYPE:=q8_0}"                  # f16 | q8_0 | q4_0
-: "${BATCH:=4096}"
-: "${UBATCH:=4096}"                 # 4096: full prefill speed; 8192+ does not fit beside a 262k context
+: "${UBATCH:=$([[ "$BACKEND" == rocm ]] && echo 4096 || echo 2048)}"  # ROCm: 4096 is full prefill speed; Vulkan: 4096 needs more GTT than there is beside a 262k pool
+: "${BATCH:=$UBATCH}"
 : "${LAZY_MODE:=on-direct}"            # n-gram (PLE) table: on-direct | on | off
 : "${LOAD_MODE:=none}"                 # none | dio | mmap. Not mmap: on Vulkan it intermittently wedges amdgpu, on ROCm KFD refuses it
 

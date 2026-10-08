@@ -1,5 +1,0 @@
-# Does evicting the model from page cache before loading slow decode? ubatch 4096, ROCm 10.1 + PM4.
-evict-1    | BACKEND=rocm10.1-pm4 BATCH=4096 UBATCH=4096 EVICT_PAGE_CACHE=1 | --prefill 16384 --prefill-runs 1
-noevict-1  | BACKEND=rocm10.1-pm4 BATCH=4096 UBATCH=4096 EVICT_PAGE_CACHE=0 | --prefill 16384 --prefill-runs 1
-evict-2    | BACKEND=rocm10.1-pm4 BATCH=4096 UBATCH=4096 EVICT_PAGE_CACHE=1 | --prefill 16384 --prefill-runs 1
-noevict-2  | BACKEND=rocm10.1-pm4 BATCH=4096 UBATCH=4096 EVICT_PAGE_CACHE=0 | --prefill 16384 --prefill-runs 1

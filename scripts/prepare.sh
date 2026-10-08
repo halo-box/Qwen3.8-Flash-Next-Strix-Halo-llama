@@ -16,14 +16,11 @@ if ((!REBUILD)) && [[ "${PULL:-1}" == 1 ]] && docker pull "$IMAGE"; then
 fi
 
 case "$BACKEND" in
-    vulkan)       BUILD=(-f docker/Dockerfile.vulkan) ;;
-    rocm10.1)     BUILD=(-f docker/Dockerfile.rocm --build-arg ROCM_VERSION=10.1 --build-arg PM4=0) ;;
-    rocm10.1-pm4) BUILD=(-f docker/Dockerfile.rocm --build-arg ROCM_VERSION=10.1 --build-arg PM4=1) ;;
-    rocm10.0-pm4) BUILD=(-f docker/Dockerfile.rocm --build-arg ROCM_VERSION=10.0 --build-arg PM4=1) ;;
-    rocm10.1-pm4-vk) BUILD=(-f docker/Dockerfile.rocm --build-arg ROCM_VERSION=10.1 --build-arg PM4=1 --build-arg VULKAN=1) ;;
-    *) echo "Error: unknown BACKEND '$BACKEND'" >&2; exit 1 ;;
+    rocm)   BUILD=(-f docker/Dockerfile.rocm) ;;
+    vulkan) BUILD=(-f docker/Dockerfile.vulkan) ;;
+    *) echo "Error: BACKEND must be rocm or vulkan, got '$BACKEND'" >&2; exit 1 ;;
 esac
 BUILD+=(--build-arg "LLAMA_PRS=$LLAMA_PRS")
 ((REBUILD)) && BUILD+=(--no-cache)
-echo "building $LOCAL_IMAGE (Vulkan: ~5 min; ROCm with PM4: 40-60 min)"
+echo "building $LOCAL_IMAGE (Vulkan: a few minutes; ROCm, which compiles its runtime: 5-60 min depending on cores)"
 docker build -t "$LOCAL_IMAGE" "${BUILD[@]}" .

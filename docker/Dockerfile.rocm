@@ -5,7 +5,7 @@
 # Changes here: the ROCm version is a build argument (10.0 or 10.1), the custom
 # retained-PM4 runtime is optional (PM4=1), and the engine is pinned to a commit.
 #
-#   docker build -f docker/Dockerfile.rocm --build-arg ROCM_VERSION=10.1 --build-arg PM4=0 .
+#   docker build -f docker/Dockerfile.rocm .   (PM4=0 builds against AMD's stock runtime instead)
 
 ARG ROCM_VERSION=10.1
 
@@ -30,7 +30,6 @@ RUN dnf -y --nodocs --setopt=install_weak_deps=False install \
   libcurl-devel rdma-core-devel elfutils-libelf-devel libdrm-devel libglvnd-devel \
   libpciaccess-devel libstdc++-devel libzstd-devel numactl-devel openssl-devel \
   pciutils pkgconf-pkg-config python3 python3-devel python3-pip \
-  vulkan-headers vulkan-loader-devel glslc glslang spirv-headers-devel \
   amdrocm-core-devel${ROCM_VERSION}-gfx1151 amdrocm${ROCM_VERSION}-gfx1151 \
   && dnf clean all && rm -rf /var/cache/dnf/*
 
@@ -50,9 +49,10 @@ ENV ROCM_PATH=/opt/rocm HIP_PATH=/opt/rocm ROCM_ROOT=/opt/rocm \
 
 # Optional retained-PM4 ROCr + HIP runtime (pwilkin/rocm-systems). PM4=0 skips it
 # and leaves an empty /opt/strix/lib, so the runtime stage is the same either way.
-ARG PM4=0
+ARG PM4=1
 ARG ROCM_SYSTEMS_REPO=https://github.com/pwilkin/rocm-systems.git
-ARG ROCM_SYSTEMS_REF=ilintar-experiments
+# ilintar-experiments, pinned: the branch later merged 1,933 upstream commits (c762032716), not yet measured.
+ARG ROCM_SYSTEMS_REF=7dda3ac6cfe6bbe0b7f08c23a67cfa118d8641a1
 RUN <<'EOF'
 set -eux
 mkdir -p /opt/strix/lib
@@ -92,9 +92,6 @@ WORKDIR /opt/llama.cpp
 # Open PRs merged on top of the pinned commit, as "number:sha" pairs. The build
 # fails if a PR head moved, so an image is always reproducible from its tag.
 ARG LLAMA_PRS=""
-# VULKAN=1 also builds the Vulkan backend (pwilkin measured #150 that way); then pin
-# the server to the ROCm device with -dev ROCm0, or layers are split across both.
-ARG VULKAN=0
 RUN <<'EOF2'
 set -eux
 git clone --filter=blob:none "$LLAMA_REPO" . && git checkout "$LLAMA_COMMIT"
@@ -120,7 +117,7 @@ else echo "ERROR: #25992 workaround no longer applies"; exit 1; fi
 patch -p1 -N --fuzz=3 < /tmp/patches/llama-grammar.patch \
   || grep -q 'MAX_REPETITION_THRESHOLD 100000' src/llama-grammar.cpp
 cmake -S . -B build -G Ninja \
-  -DGGML_HIP=ON -DGGML_VULKAN=$([ "$VULKAN" = 1 ] && echo ON || echo OFF) -DGGML_HIP_GRAPHS=ON -DGGML_HIP_NO_VMM=ON \
+  -DGGML_HIP=ON -DGGML_VULKAN=OFF -DGGML_HIP_GRAPHS=ON -DGGML_HIP_NO_VMM=ON \
   -DGGML_HIP_MMQ_MFMA=ON -DGGML_HIP_RCCL=OFF -DGGML_CUDA_FA=ON -DGGML_CUDA_FA_ALL_QUANTS=OFF \
   -DGPU_TARGETS=gfx1151 -DCMAKE_HIP_ARCHITECTURES=gfx1151 -DCMAKE_BUILD_TYPE=Release \
   -DLLAMA_BUILD_TESTS=OFF -DCMAKE_PREFIX_PATH=/opt/rocm -DROCM_PATH=/opt/rocm \
@@ -129,14 +126,14 @@ cmake --build build --parallel "$(nproc)"
 cmake --install build
 mkdir -p /usr/local/lib64
 find build -type f -name 'lib*.so*' -exec cp {} /usr/local/lib64/ \;
-printf 'llama_cpp=%s\nrocm=%s\npm4=%s\nvulkan=%s\n' "$(git rev-parse --short HEAD)" \
-  "$(basename "$(realpath /opt/rocm/core)")" "$PM4" "$VULKAN" >> /opt/strix/versions.txt
+printf 'llama_cpp=%s\nrocm=%s\npm4=%s\n' "$(git rev-parse --short HEAD)" \
+  "$(basename "$(realpath /opt/rocm/core)")" "$PM4" >> /opt/strix/versions.txt
 EOF
 
 # ── runtime stage ────────────────────────────────────────────────────────────
 FROM registry.fedoraproject.org/fedora-minimal:44
 ARG ROCM_VERSION
-ARG PM4=0
+ARG PM4=1
 
 RUN <<EOF
 tee /etc/yum.repos.d/rocm.repo <<REPO
@@ -155,7 +152,7 @@ EOF
 RUN microdnf -y --nodocs --setopt=install_weak_deps=0 install \
   bash ca-certificates curl libatomic libstdc++ libgcc libgomp libibverbs \
   elfutils-libs libdrm numactl-libs procps-ng \
-  amdrocm${ROCM_VERSION}-gfx1151 vulkan-loader mesa-vulkan-drivers \
+  amdrocm${ROCM_VERSION}-gfx1151 \
   && microdnf clean all && rm -rf /var/cache/dnf/* \
   && v=$(basename "$(realpath /opt/rocm/core-*)") \
   && ln -s "$v" /opt/rocm/core \

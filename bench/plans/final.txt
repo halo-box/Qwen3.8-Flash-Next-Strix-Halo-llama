@@ -1,5 +1,0 @@
-# The recipe's defaults, measured for the README: prefill 8k-128k, decode at 1/2/4/8 requests.
-final            |                                       | --clients 1,2,4,8
-# #151: stop drafting while more than N slots generate.
-final-maxslots2  | LLAMA_ARG_SPEC_DRAFT_MAX_SLOTS=2       | --prefill "" --clients 2,4,8
-final-maxslots4  | LLAMA_ARG_SPEC_DRAFT_MAX_SLOTS=4       | --prefill "" --clients 2,4,8

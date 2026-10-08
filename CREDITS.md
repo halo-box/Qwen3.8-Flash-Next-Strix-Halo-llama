@@ -5,7 +5,7 @@ This recipe is glue around other people's work. Where a file, setting or idea ca
 ## Engine
 
 - [halo-box/strix-llama.cpp](https://github.com/halo-box/strix-llama.cpp): the Strix Halo fork of llama.cpp this
-  recipe serves with, pinned at `4c6ccf20e`. It includes
+  recipe serves with, pinned at `bed1b8a14`. It includes
   [#150](https://github.com/halo-box/strix-llama.cpp/pull/150) by [pwilkin](https://github.com/pwilkin) (HIP decode
   throughput for Qwen3.8-Flash-Next) and [#147](https://github.com/halo-box/strix-llama.cpp/pull/147) by
   [LaurentZuijdwijk](https://github.com/LaurentZuijdwijk) (`--spec-n-rs-seq`, capping the recurrent rollback
@@ -50,7 +50,6 @@ This recipe is glue around other people's work. Where a file, setting or idea ca
 - kyuz0's [measured launch line](https://github.com/kyuz0/amd-strix-halo-toolboxes/blob/main/docs/building.md#retained-pm4-strix-halo-build-rocm-100-strix-llama)
   for `rocm-10.0-strix-llama` (`--lazy-mode on-direct`, never `GGML_CUDA_ENABLE_UNIFIED_MEMORY`), and his
   [AI Toolbox Cockpit](https://github.com/kyuz0/ai-toolbox-cockpit) profiles for the sibling Flash-Next forks.
-- [eugr/llama-benchy](https://github.com/eugr/llama-benchy) (MIT): the server benchmark in `bench/serve.sh`.
 - `bench/speed.py` reimplements the measurement method of MiaAI-Lab's `tools/bench.py` (prompt sizes, the code
   and prose decode tasks, medians, barrier-started concurrency, server-side timings); no code is copied.
 

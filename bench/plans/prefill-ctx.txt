@@ -1,4 +1,0 @@
-# Does the 262k context cost prefill? 16k prompt, ubatch 4096.
-nomtp-ctx32k  | BACKEND=rocm10.1-pm4 BATCH=4096 UBATCH=4096 MTP=0 CONTEXT=32768 CONTEXT_PER_SLOT=32768 PARALLEL=1 | --prefill 16384 --prefill-runs 2 --decode-runs 0
-mtp-ctx32k    | BACKEND=rocm10.1-pm4 BATCH=4096 UBATCH=4096 CONTEXT=32768 CONTEXT_PER_SLOT=32768 PARALLEL=1       | --prefill 16384 --prefill-runs 2 --decode-runs 0
-mtp-ub8192    | BACKEND=rocm10.1-pm4 BATCH=8192 UBATCH=8192                                                       | --prefill 16384 --prefill-runs 2 --decode-runs 0

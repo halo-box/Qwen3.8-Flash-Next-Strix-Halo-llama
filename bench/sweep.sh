@@ -20,11 +20,22 @@ LOG=results/speed/sweep.log
 log() { printf '%s %s\n' "$(date +%T)" "$*" | tee -a "$LOG"; }
 
 idle() {
+    # A load started right after an image build has failed with a lost device, so after
+    # any build it also waits COOLDOWN seconds for the export's I/O to settle.
+    local saw_build=0
     for _ in $(seq 120); do
         local dirty building
         dirty=$(awk '/^Dirty:/{print int($2/1024)}' /proc/meminfo)
-        building=$(pgrep -c -f 'buildkit-runc|docker-buildx' || true)
-        if ! pgrep -x llama-server >/dev/null && ((dirty < 256 && building == 0)); then return 0; fi
+        building=$(pgrep -c -f '[b]uildkit-runc|[d]ocker-buildx' || true)
+        ((building > 0)) && saw_build=1
+        if ! pgrep -x llama-server >/dev/null && ((dirty < 256 && building == 0)); then
+            # also when the build finished just before this sweep started
+            local newest age
+            newest=$(docker image ls --format '{{.CreatedAt}}' | head -n1 | awk '{print $1" "$2" "$3}')
+            age=$(( $(date +%s) - $(date -d "$newest" +%s 2>/dev/null || echo 0) ))
+            if ((saw_build || age < ${COOLDOWN:-60})); then sync; sleep "${COOLDOWN:-60}"; fi
+            return 0
+        fi
         sync; sleep 5
     done
     log "ABORT: machine not idle (a llama-server will not exit?)"; exit 1

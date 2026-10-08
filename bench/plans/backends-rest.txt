@@ -1,3 +1,0 @@
-vulkan        | BACKEND=vulkan        |
-rocm10.1      | BACKEND=rocm10.1      |
-rocm10.0-pm4  | BACKEND=rocm10.0-pm4  |

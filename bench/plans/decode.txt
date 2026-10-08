@@ -1,9 +1,0 @@
-# Decode at one request, ROCm 10.1 + PM4, ubatch 4096: speculative settings.
-mtp-off     | MTP=0                                              | --prefill ""
-mtp-n2      | MTP_DRAFT_N=2                                      | --prefill ""
-mtp-n3      | MTP_DRAFT_N=3                                      | --prefill ""
-mtp-n4      | MTP_DRAFT_N=4                                      | --prefill ""
-mtp-n5      | MTP_DRAFT_N=5                                      | --prefill ""
-mtp-n3-ngram| MTP_DRAFT_N=3 SPEC_TYPE=draft-mtp,ngram-mod        | --prefill ""
-mtp-n3-v32k | MTP_DRAFT_N=3 LLAMA_ARG_SPEC_DRAFT_MTP_VOCAB=32768 | --prefill ""
-mtp-n3-v64k | MTP_DRAFT_N=3 LLAMA_ARG_SPEC_DRAFT_MTP_VOCAB=65536 | --prefill ""
