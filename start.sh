@@ -69,9 +69,12 @@ DEVICES=(--device /dev/dri)
 ENVS=()
 if [[ "$BACKEND" == rocm* ]]; then
     DEVICES+=(--device /dev/kfd)
+    # Images built with Vulkan as well see the GPU twice; keep everything on ROCm.
+    ARGS+=(-dev ROCm0)
+    [[ "$MTP" == 1 ]] && ARGS+=(--spec-draft-device ROCm0)
     [[ -n "${HIP_LAUNCH_BLOCKING:-}" ]] && ENVS+=(-e "HIP_LAUNCH_BLOCKING=$HIP_LAUNCH_BLOCKING")
 fi
-for v in $(compgen -e | grep -E '^(GGML_|AMD_|HSA_|RADV_|DEBUG_HIP_)' || true); do ENVS+=(-e "$v=${!v}"); done
+for v in $(compgen -e | grep -E '^(GGML_|AMD_|HSA_|RADV_|DEBUG_HIP_|LLAMA_ARG_)' || true); do ENVS+=(-e "$v=${!v}"); done
 
 CMD=(docker run -d --name "$CONTAINER_NAME"
      "${DEVICES[@]}" --group-add "$(getent group render | cut -d: -f3)"

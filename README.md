@@ -138,7 +138,7 @@ environment wins). Arguments after `--` go to `llama-server` last, so they win
 | `CONTEXT_PER_SLOT` | `262144` | most context one request may use |
 | `KV_UNIFIED` | `1` | `0` gives each slot its own `CONTEXT / PARALLEL` instead of one shared pool |
 | `KV_DTYPE` | `q8_0` | KV cache type for the model and the draft head |
-| `BATCH` / `UBATCH` | `2048` / `2048` | prompt batch sizes |
+| `BATCH` / `UBATCH` | `4096` / `4096` | prompt batch sizes. 4096 reaches full prefill speed (2048 is ~18% slower); 8192 and up need a compute buffer that does not fit beside a 262k context |
 | `LAZY_MODE` / `LOAD_MODE` | `on-direct` / `none` | the n-gram table is read row by row from disk, never loaded to the GPU; weights are read into GPU memory, not memory-mapped (see Troubleshooting) |
 | `MTP` | `1` | `0` serves without the draft head |
 | `SPEC_TYPE` / `MTP_DRAFT_N` / `MTP_ADAPTIVE` | `draft-mtp` / `3` / `0` | speculative decoding |
@@ -148,7 +148,7 @@ environment wins). Arguments after `--` go to `llama-server` last, so they win
 | `EXTRA_ARGS` | empty | extra `llama-server` arguments |
 | `LLAMA_PRS` | `151:3cb54eb…` | open pull requests merged into the image at build time |
 
-`GGML_*`, `AMD_*`, `HSA_*`, `RADV_*` and `DEBUG_HIP_*` variables in the environment are passed into the container.
+`GGML_*`, `AMD_*`, `HSA_*`, `RADV_*`, `DEBUG_HIP_*` and `LLAMA_ARG_*` variables in the environment are passed into the container; `LLAMA_ARG_*` set any `llama-server` option (for example `LLAMA_ARG_SPEC_DRAFT_MTP_VOCAB=65536`).
 
 ## Benchmarks
 

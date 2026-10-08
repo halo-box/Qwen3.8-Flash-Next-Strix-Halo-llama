@@ -1,0 +1,7 @@
+# Where does server prefill lose to llama-bench? 16k prompt, ROCm 10.1 + PM4, q8_0 KV.
+base-ub4096   | BACKEND=rocm10.1-pm4 BATCH=4096 UBATCH=4096                       | --prefill 16384 --prefill-runs 2 --decode-runs 0
+nomtp-ub4096  | BACKEND=rocm10.1-pm4 BATCH=4096 UBATCH=4096 MTP=0                 | --prefill 16384 --prefill-runs 2 --decode-runs 0
+np1-ub4096    | BACKEND=rocm10.1-pm4 BATCH=4096 UBATCH=4096 PARALLEL=1            | --prefill 16384 --prefill-runs 2 --decode-runs 0
+b16k-ub4096   | BACKEND=rocm10.1-pm4 BATCH=16384 UBATCH=4096                      | --prefill 16384 --prefill-runs 2 --decode-runs 0
+ub16384       | BACKEND=rocm10.1-pm4 BATCH=16384 UBATCH=16384                     | --prefill 16384 --prefill-runs 2 --decode-runs 0
+nomtp-np1-b16k| BACKEND=rocm10.1-pm4 BATCH=16384 UBATCH=16384 MTP=0 PARALLEL=1    | --prefill 16384 --prefill-runs 2 --decode-runs 0
