@@ -19,14 +19,6 @@ while (($#)); do
     shift
 done
 
-# .env: KEY=value lines, data only, never sourced; the environment wins.
-if [[ -f .env ]]; then
-    while IFS= read -r line; do
-        [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
-        [[ "$line" =~ ^([A-Z_][A-Z0-9_]*)=(.*)$ ]] || { echo "Error: bad .env line: $line" >&2; exit 1; }
-        [[ -z "${!BASH_REMATCH[1]+x}" ]] && export "${BASH_REMATCH[1]}=${BASH_REMATCH[2]}"
-    done < .env
-fi
 # shellcheck source=scripts/config.sh
 . scripts/config.sh
 

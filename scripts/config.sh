@@ -3,6 +3,16 @@
 # the environment wins over .env, and .env wins over these defaults.
 # shellcheck shell=bash
 
+# .env: KEY=value lines, data only, never sourced; the environment wins.
+_env="$(dirname "${BASH_SOURCE[0]}")/../.env"
+if [[ -f "$_env" ]]; then
+    while IFS= read -r line; do
+        [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
+        [[ "$line" =~ ^([A-Z_][A-Z0-9_]*)=(.*)$ ]] || { echo "Error: bad .env line: $line" >&2; exit 1; }
+        [[ -z "${!BASH_REMATCH[1]+x}" ]] && export "${BASH_REMATCH[1]}=${BASH_REMATCH[2]}"
+    done < "$_env"
+fi
+
 # ── Engine ───────────────────────────────────────────────────────────────────
 : "${BACKEND:=vulkan}"                 # vulkan | rocm10.1 | rocm10.1-pm4 | rocm10.0-pm4
 : "${IMAGE_REPO:=ghcr.io/dzannotti/qwen3.8-flash-next-strix-halo-llama}"

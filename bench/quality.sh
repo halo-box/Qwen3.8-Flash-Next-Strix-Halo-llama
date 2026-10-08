@@ -13,6 +13,7 @@ export BACKEND LOCAL_IMAGE="qfn-strix:$BACKEND"
 . scripts/config.sh
 : "${CHUNKS:=40}"
 OUT=results/quality/$BACKEND.txt
+[[ -f "$MODEL_DIR/$MODEL_FILE" ]] || { echo "Error: missing $MODEL_DIR/$MODEL_FILE" >&2; exit 2; }
 mkdir -p results/quality bench/data
 
 if [[ ! -f bench/data/wiki.test.raw ]]; then
