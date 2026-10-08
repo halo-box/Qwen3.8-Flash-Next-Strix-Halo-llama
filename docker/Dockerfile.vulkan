@@ -13,7 +13,7 @@ RUN dnf -y --nodocs --setopt=install_weak_deps=False install \
   && dnf clean all && rm -rf /var/cache/dnf/*
 
 ARG LLAMA_REPO=https://github.com/halo-box/strix-llama.cpp.git
-ARG LLAMA_COMMIT=4c6ccf20efcac39a9503a76823cd546ff4ca336b
+ARG LLAMA_COMMIT=bed1b8a14710d58cafd808c10f1cb52eeff1e3d5
 WORKDIR /opt/llama.cpp
 # Open PRs merged on top of the pinned commit, as "number:sha" pairs. The build
 # fails if a PR head moved, so an image is always reproducible from its tag.

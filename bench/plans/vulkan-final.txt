@@ -1,0 +1,2 @@
+# Vulkan at strix-llama bed1b8a14 (#133: WMMA selected-key attention), the recipe's other defaults.
+vulkan-final | BACKEND=vulkan | --clients 1,2,4,8
