@@ -1,0 +1,6 @@
+# Round 1: the four engine builds at the recipe defaults (8 slots, 262k pool, q8_0 KV,
+# MTP draft 3), one request at a time, Mia's prefill and decode method.
+vulkan        | BACKEND=vulkan        |
+rocm10.1-pm4  | BACKEND=rocm10.1-pm4  |
+rocm10.1      | BACKEND=rocm10.1      |
+rocm10.0-pm4  | BACKEND=rocm10.0-pm4  |

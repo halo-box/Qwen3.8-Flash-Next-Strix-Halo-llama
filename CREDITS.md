@@ -51,6 +51,8 @@ This recipe is glue around other people's work. Where a file, setting or idea ca
   for `rocm-10.0-strix-llama` (`--lazy-mode on-direct`, never `GGML_CUDA_ENABLE_UNIFIED_MEMORY`), and his
   [AI Toolbox Cockpit](https://github.com/kyuz0/ai-toolbox-cockpit) profiles for the sibling Flash-Next forks.
 - [eugr/llama-benchy](https://github.com/eugr/llama-benchy) (MIT): the server benchmark in `bench/serve.sh`.
+- `bench/speed.py` reimplements the measurement method of MiaAI-Lab's `tools/bench.py` (prompt sizes, the code
+  and prose decode tasks, medians, barrier-started concurrency, server-side timings); no code is copied.
 
 ## Structure
 

@@ -156,9 +156,10 @@ The scripts that produce every number above are in [`bench/`](bench):
 
 | Script | What it measures |
 | --- | --- |
-| `bench/quality.sh BACKEND` | wikitext-2 perplexity, and greedy output alone against 8 concurrent requests |
-| `bench/kernel.sh BACKEND` | raw prefill and decode with `llama-bench` at several depths and ubatch sizes |
-| `bench/serve.sh BACKEND` | the recipe's own server under [llama-benchy](https://github.com/eugr/llama-benchy) at 1, 2, 4 and 8 concurrent requests |
+| `bench/speed.py` | prefill (8k to 128k prompts) and decode (code and prose tasks, optionally at several concurrency levels) against the running server, with Mia's AI Lab's method |
+| `bench/sweep.sh PLAN` | `speed.py` against each configuration in a plan file (`bench/plans/`), one after another on an idle machine |
+| `bench/quality.sh BACKEND` | wikitext-2 perplexity, one sequence against four batched (the gfx1151 HIP bug) |
+| `bench/kernel.sh BACKEND` | raw prefill and decode with `llama-bench`, no server |
 | `bench/fit.sh BACKEND` | the largest KV pool that loads, growing it a step at a time |
 
 Results land in `results/` (not tracked). Run them on an idle machine.
