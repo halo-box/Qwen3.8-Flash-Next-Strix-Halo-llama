@@ -99,9 +99,17 @@ if docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
         docker rm "$CONTAINER_NAME" >/dev/null
     fi
 fi
+# A previous server that has not fully exited still holds its GPU memory; loading a
+# second one on top of it is how the amdgpu driver ends up wedged.
+if pids=$(pgrep -x llama-server); then
+    die "another llama-server is still running (pid $(echo $pids)); stop it first, or reboot if it cannot be killed"
+fi
 docker run --rm "${DEVICES[@]}" --group-add "$(getent group render | cut -d: -f3)" \
     "$LOCAL_IMAGE" llama-server "${ARGS[@]}" --help >/dev/null 2>&1 \
     || die "llama-server rejected the arguments (run ./start.sh --print)"
+# Flush pending writes (image builds, downloads) first: GPU allocations made while
+# gigabytes of dirty pages are still in flight can fail and take the driver down.
+sync
 "${CMD[@]}" >/dev/null
 echo "  container $CONTAINER_NAME, backend $BACKEND, $PARALLEL slots, $CONTEXT-token KV pool ($KV_DTYPE)"
 

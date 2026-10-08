@@ -1,24 +1,29 @@
 #!/usr/bin/env bash
-# bench/fit.sh BACKEND — which KV pools load, and what they cost in GTT.
-# Each case: "PARALLEL CONTEXT KV_UNIFIED". Writes results/fit/<BACKEND>.tsv.
+# bench/fit.sh BACKEND — the largest KV pool that loads, and what each step costs in GTT.
+#
+# Grows CONTEXT from START in STEP increments with the current PARALLEL and
+# per-slot cap, and stops at the first size that fails. start.sh's GTT guard
+# stops a load that nears the ttm limit, so no step can push past it.
+# Writes results/fit/<BACKEND>.tsv.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 BACKEND=${1:?usage: bench/fit.sh BACKEND}
 export BACKEND LOCAL_IMAGE="qfn-strix:$BACKEND"
-CASES=${CASES:-"8 2097152 0|8 1048576 1|4 1048576 0|8 524288 1|8 262144 1"}
+. scripts/config.sh
+: "${START:=262144}" "${STEP:=262144}" "${MAX:=2097152}"
 mkdir -p results/fit
 OUT=results/fit/$BACKEND.tsv
-printf 'parallel\tcontext\tkv_unified\tper_slot\tresult\tload_s\tgtt_gib\tmem_avail_gib\twarnings\n' > "$OUT"
-IFS='|' read -ra cs <<<"$CASES"
-for c in "${cs[@]}"; do
-    read -r p ctx u <<<"$c"
+[[ -f "$OUT" ]] || printf 'parallel\tcontext\tper_slot\tmtp\tubatch\tresult\tload_s\tgtt_gib\n' > "$OUT"
+GTT_USED=$(ls /sys/class/drm/card*/device/mem_info_gtt_used | head -n1)
+
+for ((ctx = START; ctx <= MAX; ctx += STEP)); do
     t0=$SECONDS
-    if PARALLEL=$p CONTEXT=$ctx KV_UNIFIED=$u timeout 1200 ./start.sh restart >/tmp/fit.log 2>&1; then res=ok; else res=FAIL; fi
-    gtt=$(awk '{printf "%.1f",$1/2^30}' /sys/class/drm/card0/device/mem_info_gtt_used)
-    avail=$(awk '/MemAvailable/{printf "%.1f",$2/2^20}' /proc/meminfo)
-    warn=$(docker logs qwen38-flash-next-strix 2>&1 | grep -oE 'Failed to allocate[^(]*|DeviceLost[A-Za-z]*|out of memory|n_ctx_seq \([0-9]+\) > n_ctx_train' | sort -u | paste -sd';')
-    slot=$(( u == 1 ? ctx : ctx / p ))
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$p" "$ctx" "$u" "$slot" "$res" "$((SECONDS-t0))" "$gtt" "$avail" "$warn" | tee -a "$OUT"
+    if CONTEXT=$ctx ./start.sh restart > "results/fit/$BACKEND-$ctx.log" 2>&1; then res=ok; else res=FAIL; fi
+    gtt=$(grep -oE '[0-9.]+ of [0-9]+ GiB GTT' "results/fit/$BACKEND-$ctx.log" | cut -d' ' -f1)
+    [[ -n "$gtt" ]] || gtt=$(grep -oE 'GTT reached [0-9]+' "results/fit/$BACKEND-$ctx.log" | grep -oE '[0-9]+$')
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$PARALLEL" "$ctx" "$CONTEXT_PER_SLOT" "$MTP" "$UBATCH" \
+        "$res" "$((SECONDS - t0))" "${gtt:-?}" | tee -a "$OUT"
     ./stop.sh >/dev/null 2>&1
     sleep 5
+    [[ "$res" == ok ]] || break
 done

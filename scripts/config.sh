@@ -12,7 +12,7 @@
 : "${LLAMA_PRS:=151:3cb54eb4811f11faa41b787bb273a4273c9e7e36}"  # open PRs merged at build time (number:sha)
 
 # ── Model ────────────────────────────────────────────────────────────────────
-: "${MODEL_DIR:=/srv/models/gguf/qwen4exp}"
+: "${MODEL_DIR:=$HOME/models/qwen38-flash-next}"
 : "${MODEL_FILE:=Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-v2.gguf}"
 : "${MTP_FILE:=Qwen3.8-Flash-Next-MTP-ROCmFP4-FAST.gguf}"
 : "${MMPROJ_FILE:=}"                   # e.g. mmproj-Qwen3.8-Flash-Next-f16.gguf to enable images

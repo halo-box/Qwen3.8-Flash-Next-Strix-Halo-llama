@@ -13,6 +13,7 @@ NAME=$BACKEND${2:+-$2}
 : "${CONCURRENCY:=1 2 4 8}" "${PP:=2048}" "${TG:=256}" "${BENCH_DEPTHS:=0}" "${RUNS:=3}"
 mkdir -p results/serve
 
+docker image inspect qfn-strix:benchy >/dev/null 2>&1 || docker build -q -t qfn-strix:benchy -f docker/Dockerfile.benchy docker
 ./start.sh restart
 {
     echo "# $NAME"
@@ -21,7 +22,7 @@ mkdir -p results/serve
 } > "results/serve/$NAME.md"
 
 # shellcheck disable=SC2086
-docker run --rm --network host -v "$PWD/results/serve:/out" local/llama-benchy:latest \
+docker run --rm --network host -v "$PWD/results/serve:/out" qfn-strix:benchy \
     --base-url "http://$HOST:$PORT/v1" --model "$SERVED_NAME" --tokenizer Qwen/Qwen3.8-Flash-Next \
     --pp $PP --tg $TG --depth $BENCH_DEPTHS --concurrency $CONCURRENCY --runs "$RUNS" \
     --no-cache --exact-tg --format json --save-result "/out/$NAME.json" \

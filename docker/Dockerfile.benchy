@@ -1,0 +1,4 @@
+# llama-benchy (github.com/eugr/llama-benchy, MIT) for bench/serve.sh.
+FROM python:3.12-slim
+RUN pip install --no-cache-dir llama-benchy==0.4.0
+ENTRYPOINT ["llama-benchy"]
