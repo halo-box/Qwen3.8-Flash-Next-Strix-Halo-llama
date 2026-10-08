@@ -9,7 +9,7 @@ with the model's own MTP head drafting tokens and several requests decoded at on
 - Checkpoint: [`agentionai/Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-GGUF`](https://huggingface.co/agentionai/Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-GGUF)
   `v2/` (ROCmFP4-FAST, imatrix, 87 GiB) with the matching
   [MTP head](https://huggingface.co/agentionai/Qwen3.8-Flash-Next-MTP-ROCmFP4-FAST-GGUF) (2.3 GiB)
-- Engine: strix-llama.cpp `3dd2830a8` + [#151](https://github.com/halo-box/strix-llama.cpp/pull/151), Vulkan (Mesa
+- Engine: strix-llama.cpp `4c6ccf20e` + [#151](https://github.com/halo-box/strix-llama.cpp/pull/151), Vulkan (Mesa
   RADV 26.2) or ROCm 10.1 (TheRock), see [Vulkan or ROCm](#vulkan-or-rocm)
 - API model id: `Qwen3.8-Flash-Next`
 - KV cache: one q8_0 pool shared by all slots (`--kv-unified`), each slot capped at 262,144 tokens
@@ -52,7 +52,7 @@ with the model's own MTP head drafting tokens and several requests decoded at on
 ## Quick start
 
 ```bash
-git clone https://github.com/dzannotti/Qwen3.8-Flash-Next-Strix-Halo-llama.git
+git clone https://github.com/halo-box/Qwen3.8-Flash-Next-Strix-Halo-llama.git
 cd Qwen3.8-Flash-Next-Strix-Halo-llama
 
 # Get the model (~96 GB, resumable)
@@ -139,9 +139,10 @@ environment wins). Arguments after `--` go to `llama-server` last, so they win
 | `KV_UNIFIED` | `1` | `0` gives each slot its own `CONTEXT / PARALLEL` instead of one shared pool |
 | `KV_DTYPE` | `q8_0` | KV cache type for the model and the draft head |
 | `BATCH` / `UBATCH` | `2048` / `2048` | prompt batch sizes |
-| `LAZY_MODE` / `LOAD_MODE` | `on-direct` / `mmap` | how the n-gram table is read; keep it off the GPU |
+| `LAZY_MODE` / `LOAD_MODE` | `on-direct` / `mmap` (Vulkan), `none` (ROCm) | how the n-gram table is read, kept off the GPU; on ROCm `mmap` makes HIP map the whole file and exceed KFD's system-memory limit |
 | `MTP` | `1` | `0` serves without the draft head |
 | `SPEC_TYPE` / `MTP_DRAFT_N` / `MTP_ADAPTIVE` | `draft-mtp` / `3` / `0` | speculative decoding |
+| `SPEC_N_RS_SEQ` | `-1` | recurrent-state snapshots kept per slot for fast draft rollback ([#147](https://github.com/halo-box/strix-llama.cpp/pull/147)); `-1` follows `MTP_DRAFT_N`, lower saves memory |
 | `TEMPERATURE` / `TOP_P` / `TOP_K` | `1.0` / `0.95` / `20` | default sampling (Qwen's thinking-mode values); a request's own values win |
 | `GTT_MARGIN_GIB` | `1` | stop loading when GTT gets this close to the kernel's limit |
 | `EXTRA_ARGS` | empty | extra `llama-server` arguments |

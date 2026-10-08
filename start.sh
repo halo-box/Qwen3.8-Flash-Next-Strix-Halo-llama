@@ -59,6 +59,7 @@ if [[ "$MTP" == 1 ]]; then
            --spec-draft-ngl 999 --spec-draft-n-max "$MTP_DRAFT_N"
            -ctkd "$KV_DTYPE" -ctvd "$KV_DTYPE")
     [[ "$MTP_ADAPTIVE" == 1 ]] && ARGS+=(--spec-draft-adaptive)
+    ARGS+=(--spec-n-rs-seq "$SPEC_N_RS_SEQ")
 fi
 # shellcheck disable=SC2206
 [[ -n "$EXTRA_ARGS" ]] && ARGS+=($EXTRA_ARGS)

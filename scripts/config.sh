@@ -15,7 +15,7 @@ fi
 
 # ── Engine ───────────────────────────────────────────────────────────────────
 : "${BACKEND:=vulkan}"                 # vulkan | rocm10.1 | rocm10.1-pm4 | rocm10.0-pm4
-: "${IMAGE_REPO:=ghcr.io/dzannotti/qwen3.8-flash-next-strix-halo-llama}"
+: "${IMAGE_REPO:=ghcr.io/halo-box/qwen3.8-flash-next-strix-halo-llama}"
 : "${IMAGE:=$IMAGE_REPO:$BACKEND}"
 : "${LOCAL_IMAGE:=qfn-strix:$BACKEND}" # built by scripts/prepare.sh when the pull fails
 : "${CONTAINER_NAME:=qwen38-flash-next-strix}"
@@ -40,13 +40,14 @@ fi
 : "${BATCH:=2048}"
 : "${UBATCH:=2048}"
 : "${LAZY_MODE:=on-direct}"            # n-gram (PLE) table: on-direct | on | off
-: "${LOAD_MODE:=mmap}"                 # --lazy-mode needs mmap
+: "${LOAD_MODE:=$([[ "$BACKEND" == rocm* ]] && echo none || echo mmap)}"  # ROCm: none (mmap makes HIP map the whole file and hit KFD's limit)
 
 # ── Speculative decoding ─────────────────────────────────────────────────────
 : "${MTP:=1}"                          # 0 serves without the draft head
 : "${SPEC_TYPE:=draft-mtp}"            # e.g. draft-mtp,ngram-mod
 : "${MTP_DRAFT_N:=3}"
 : "${MTP_ADAPTIVE:=0}"
+: "${SPEC_N_RS_SEQ:=-1}"               # recurrent rollback snapshots per slot (#147); -1 follows MTP_DRAFT_N, 0 disables the fast path
 
 # ── Sampling defaults (Qwen's thinking-mode values; a request's own values win) ─
 : "${TEMPERATURE:=1.0}"

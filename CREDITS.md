@@ -5,9 +5,11 @@ This recipe is glue around other people's work. Where a file, setting or idea ca
 ## Engine
 
 - [halo-box/strix-llama.cpp](https://github.com/halo-box/strix-llama.cpp): the Strix Halo fork of llama.cpp this
-  recipe serves with, pinned at `3dd2830a8`. It includes
+  recipe serves with, pinned at `4c6ccf20e`. It includes
   [#150](https://github.com/halo-box/strix-llama.cpp/pull/150) by [pwilkin](https://github.com/pwilkin) (HIP decode
-  throughput for Qwen3.8-Flash-Next). [#151](https://github.com/halo-box/strix-llama.cpp/pull/151)
+  throughput for Qwen3.8-Flash-Next) and [#147](https://github.com/halo-box/strix-llama.cpp/pull/147) by
+  [LaurentZuijdwijk](https://github.com/LaurentZuijdwijk) (`--spec-n-rs-seq`, capping the recurrent rollback
+  snapshots MTP keeps per slot). [#151](https://github.com/halo-box/strix-llama.cpp/pull/151)
   (`--spec-draft-max-slots`) is merged at build time until it lands.
 - [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) and [ggml](https://github.com/ggml-org/ggml), by
   Georgi Gerganov and the llama.cpp contributors (MIT). `qwen4exp` (Qwen3.8-Flash-Next) support is by Daniel Han
