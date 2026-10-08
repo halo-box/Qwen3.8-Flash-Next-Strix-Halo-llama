@@ -2,6 +2,7 @@
 """Functional checks against the running server. Stdlib only.
 
   tests/check.py                   chat, streaming, tool call, image, oversized request
+  tests/check.py --window          also one ~250k-token request: the full window works (slow, ~20 min)
   tests/check.py --long N          also N concurrent ~200k-token requests (every slot its own window; slow)
 
 Exits non-zero if any check fails.
@@ -17,9 +18,13 @@ import time
 import urllib.error
 import urllib.request
 import zlib
+import functools
+
+print = functools.partial(print, flush=True)  # noqa: A001 - progress shows under nohup too
 
 p = argparse.ArgumentParser()
 p.add_argument("--url", default="http://127.0.0.1:8080")
+p.add_argument("--window", action="store_true", help="one request near the full 262k window")
 p.add_argument("--long", type=int, default=0, help="concurrent ~200k-token requests to run")
 a = p.parse_args()
 BASE = a.url.rstrip("/")
@@ -94,23 +99,43 @@ def t_image():
     assert "red" in out["message"]["content"].lower(), out["message"]["content"]
 
 
-def synthetic(tokens, seed):
-    rng = random.Random(seed)
-    words = "river engine winter market signal garden bridge letter theory method paper field window".split()
-    text = " ".join(rng.choice(words) for _ in range(int(tokens * 0.9)))
+def n_tokens(text):
     with post("/tokenize", {"content": text}) as r:
-        have = len(json.load(r)["tokens"])
-    return " ".join(text.split()[: int(len(text.split()) * tokens / have)])
+        return len(json.load(r)["tokens"])
+
+
+def synthetic(tokens, seed):
+    """Random words that tokenize to within ~0.5% of `tokens`, sized with the server's tokenizer."""
+    rng = random.Random(seed)
+    vocab = "river engine winter market signal garden bridge letter theory method paper field window".split()
+    words = [rng.choice(vocab) for _ in range(tokens)]
+    for _ in range(8):
+        have = n_tokens(" ".join(words))
+        if abs(have - tokens) <= tokens // 200:
+            break
+        n = int(len(words) * tokens / have)
+        words = words[:n] if n < len(words) else words + [rng.choice(vocab) for _ in range(n - len(words))]
+    return " ".join(words)
 
 
 def t_oversized():
     prompt = synthetic(270_000, 1)
+    assert n_tokens(prompt) > 262_144, "test prompt is not over the window"
     try:
         chat([{"role": "user", "content": prompt}], max_tokens=8)
     except urllib.error.HTTPError as e:
         assert e.code == 400, f"HTTP {e.code}"
         return f"refused with HTTP 400: {e.read().decode()[:80]}"
     raise AssertionError("a 270k-token prompt was accepted")
+
+
+def t_window():
+    # ~250k tokens, deliberately not a multiple of 16: the last prompt chunk is then a partial
+    # tile, the case that faulted the GPU in flash_attn_mask_to_KV_max before the patch.
+    prompt = synthetic(250_003, 7) + "\n\nWhat is the first word above? One word."
+    n = n_tokens(prompt)
+    out = chat([{"role": "user", "content": prompt}], max_tokens=16)
+    return f"{n} prompt tokens, answered {out['message']['content'].strip()[:20]!r}"
 
 
 def t_long(n):
@@ -136,6 +161,8 @@ check("streaming", t_stream)
 check("tool call", t_tool)
 check("image input", t_image)
 check("request over 262k refused", t_oversized)
+if a.window:
+    check("one request near the full 262k window", t_window)
 if a.long:
     check(f"{a.long} concurrent long-context requests", lambda: t_long(a.long))
 print("all checks passed" if not failed else f"{len(failed)} failed: {', '.join(failed)}")

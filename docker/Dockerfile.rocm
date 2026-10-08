@@ -116,6 +116,9 @@ elif git apply --reverse --check "$p"; then echo "#25992 workaround already upst
 else echo "ERROR: #25992 workaround no longer applies"; exit 1; fi
 patch -p1 -N --fuzz=3 < /tmp/patches/llama-grammar.patch \
   || grep -q 'MAX_REPETITION_THRESHOLD 100000' src/llama-grammar.cpp
+# Bounds check for the last, partial tile in flash_attn_mask_to_KV_max: without it a
+# long prompt (~240k) whose final chunk is not a multiple of 16 faults the GPU.
+git apply /tmp/patches/fattn-mask-kv-max-partial-tile.patch
 cmake -S . -B build -G Ninja \
   -DGGML_HIP=ON -DGGML_VULKAN=OFF -DGGML_HIP_GRAPHS=ON -DGGML_HIP_NO_VMM=ON \
   -DGGML_HIP_MMQ_MFMA=ON -DGGML_HIP_RCCL=OFF -DGGML_CUDA_FA=ON -DGGML_CUDA_FA_ALL_QUANTS=OFF \
