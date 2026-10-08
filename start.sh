@@ -5,6 +5,7 @@
 #   ./start.sh restart      stop the running server, then start
 #   ./start.sh --print      print the docker command and exit
 #   ./start.sh [restart] -- <llama-server args>   extra args, appended last
+#   FOREGROUND=1 ./start.sh  stay attached to the server's log; exit with its exit code (systemd)
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
@@ -25,17 +26,36 @@ done
 GTT_USED=$(ls /sys/class/drm/card*/device/mem_info_gtt_used | head -n1)
 GTT_TOTAL=${GTT_USED%_used}_total
 
+# ── Memory plan ──────────────────────────────────────────────────────────────
+# GTT the server takes, measured at the defaults (q8_0 KV, ubatch 2048, MTP, vision, 262k
+# windows): one slot, plus each further slot. GTT is carved out of RAM, so the plan keeps
+# RAM_RESERVE_GIB of RAM for the system as well as staying under the GTT limit.
+case "$BACKEND" in rocm) BASE_GIB=87.4 SLOT_GIB=4.2 ;; *) BASE_GIB=91.0 SLOT_GIB=6.3 ;; esac
+gtt_limit=$(awk '{print $1/2^30}' "$GTT_TOTAL")
+ram=$(awk '/MemTotal/{print $2/2^20}' /proc/meminfo)
+budget=$(awk -v g="$gtt_limit" -v r="$ram" -v m="$GTT_MARGIN_GIB" -v k="$RAM_RESERVE_GIB" 'BEGIN{a=g-m-1; b=r-k; print (a<b?a:b)}')
+estimate() { awk -v b="$BASE_GIB" -v s="$SLOT_GIB" -v p="$1" -v w="$CONTEXT_PER_SLOT" 'BEGIN{printf "%.1f", b + s*(p-1)*w/262144}'; }
+fits() { awk -v e="$(estimate "$1")" -v b="$budget" 'BEGIN{exit !(e <= b)}'; }
+if [[ "$PARALLEL" == auto ]]; then
+    PARALLEL=0
+    for p in 1 2 3 4 5 6 7 8; do fits $p && PARALLEL=$p; done
+    ((PARALLEL > 0)) || { echo "Error: not even one slot fits in ${budget} GiB (GTT $(printf %.0f "$gtt_limit") GiB): see README, Requirements" >&2; exit 1; }
+fi
+EST_GIB=$(estimate "$PARALLEL")
+if ! fits "$PARALLEL" && [[ "${FORCE:-0}" != 1 ]]; then
+    best=0; for p in 1 2 3 4 5 6 7 8; do fits $p && best=$p; done
+    echo "Error: $PARALLEL slots of $CONTEXT_PER_SLOT tokens need ~${EST_GIB} GiB of GTT; ${budget} GiB is available." >&2
+    echo "       $best slot(s) fit (PARALLEL=$best), or shorten CONTEXT_PER_SLOT. FORCE=1 skips this check." >&2
+    exit 1
+fi
+CONTEXT=$((PARALLEL * CONTEXT_PER_SLOT))
+
 step() { printf '\n\033[1m[%s] %s\033[0m\n' "$1" "$2"; }
 die() { echo "Error: $*" >&2; exit 1; }
 
 # ── 1. Setup ─────────────────────────────────────────────────────────────────
 step 1/5 "Setup"
-for f in "$MODEL_FILE" ${MTP_FILE:+"$MTP_FILE"} ${MMPROJ_FILE:+"$MMPROJ_FILE"}; do
-    [[ -f "$MODEL_DIR/$f" ]] || die "missing $MODEL_DIR/$f (see README: Get the model)"
-done
-if ! docker image inspect "$LOCAL_IMAGE" >/dev/null 2>&1; then
-    scripts/prepare.sh
-fi
+scripts/prepare.sh   # downloads the model and gets the image the first time; quick after that
 echo "  image:  $LOCAL_IMAGE ($(docker run --rm "$LOCAL_IMAGE" cat /opt/strix/versions.txt | paste -sd' '))"
 echo "  model:  $MODEL_DIR/$MODEL_FILE"
 
@@ -50,16 +70,17 @@ ARGS=(
     --load-mode "$LOAD_MODE" --lazy-mode "$LAZY_MODE"
     --temp "$TEMPERATURE" --top-p "$TOP_P" --top-k "$TOP_K"
     --metrics
+    --ctx-checkpoints "$CTX_CHECKPOINTS" --cache-ram "$CACHE_RAM"
 )
-if [[ "$KV_UNIFIED" == 1 ]]; then ARGS+=(--kv-unified --kv-unified-per-slot "$CONTEXT_PER_SLOT"); else ARGS+=(--no-kv-unified); fi
+if [[ "$KV_UNIFIED" == 1 ]]; then ARGS+=(--kv-unified); else ARGS+=(--no-kv-unified); fi
 [[ -n "$API_KEY" ]] && ARGS+=(--api-key "$API_KEY")
-[[ -n "$MMPROJ_FILE" ]] && ARGS+=(--mmproj "/models/$MMPROJ_FILE")
+[[ "$VISION" == 1 ]] && ARGS+=(--mmproj "/models/$MMPROJ_FILE")
 if [[ "$MTP" == 1 ]]; then
     ARGS+=(--spec-type "$SPEC_TYPE" --spec-draft-model "/models/$MTP_FILE"
            --spec-draft-ngl 999 --spec-draft-n-max "$MTP_DRAFT_N"
            -ctkd "$KV_DTYPE" -ctvd "$KV_DTYPE")
     [[ "$MTP_ADAPTIVE" == 1 ]] && ARGS+=(--spec-draft-adaptive)
-    ARGS+=(--spec-n-rs-seq "$SPEC_N_RS_SEQ")
+    ARGS+=(--spec-n-rs-seq "$SPEC_N_RS_SEQ" --spec-draft-p-min "$DRAFT_P_MIN")
 fi
 # shellcheck disable=SC2206
 [[ -n "$EXTRA_ARGS" ]] && ARGS+=($EXTRA_ARGS)
@@ -86,6 +107,10 @@ if ((PRINT)); then printf '%q ' "${CMD[@]}"; echo; exit 0; fi
 
 # ── 3. Launch ────────────────────────────────────────────────────────────────
 step 3/5 "Launch"
+# Check the arguments first, so a typo on restart leaves the running server alone.
+docker run --rm "${DEVICES[@]}" --group-add "$(getent group render | cut -d: -f3)" \
+    "$LOCAL_IMAGE" llama-server "${ARGS[@]}" --help >/dev/null 2>&1 \
+    || die "llama-server rejected the arguments (run ./start.sh --print)"
 if docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
     if ((RESTART)); then ./stop.sh; else
         if [[ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER_NAME")" == true ]]; then
@@ -99,31 +124,21 @@ fi
 if pids=$(pgrep -x llama-server); then
     die "another llama-server is still running (pid $(echo $pids)); stop it first, or reboot if it cannot be killed"
 fi
-docker run --rm "${DEVICES[@]}" --group-add "$(getent group render | cut -d: -f3)" \
-    "$LOCAL_IMAGE" llama-server "${ARGS[@]}" --help >/dev/null 2>&1 \
-    || die "llama-server rejected the arguments (run ./start.sh --print)"
-# GPU allocations that have to reclaim page cache first can fail on Vulkan
-# ("Couldn't update BO_VA (-12)", then device lost), and a failed load can take the
-# amdgpu driver down. So: wait until the previous server's GTT is released, flush
-# pending writes, and drop the model files' own cached pages (no root needed).
+# Wait until a previous server's GTT is released, and flush pending writes: a load
+# that races either has failed with a lost device.
 for _ in $(seq 60); do (($(awk '{print int($1/1073741824)}' "$GTT_USED") < 2)) && break; sleep 1; done
 (($(awk '{print int($1/1073741824)}' "$GTT_USED") < 2)) || die "GTT still in use by something else; is another GPU program running?"
 sync
-if [[ "$EVICT_PAGE_CACHE" == 1 ]]; then
-    python3 -I -c 'import os, sys
-for p in sys.argv[1:]:
-    fd = os.open(p, os.O_RDONLY); os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED); os.close(fd)' \
-        "$MODEL_DIR/$MODEL_FILE" ${MTP_FILE:+"$MODEL_DIR/$MTP_FILE"}
-fi
 "${CMD[@]}" >/dev/null
-echo "  container $CONTAINER_NAME, backend $BACKEND, $PARALLEL slots, $CONTEXT-token KV pool ($KV_DTYPE)"
+echo "  $BACKEND, $PARALLEL slot(s) of $CONTEXT_PER_SLOT tokens, $KV_DTYPE KV, vision $([[ $VISION == 1 ]] && echo on || echo off); ~${EST_GIB} of $(printf %.0f "$gtt_limit") GiB GTT"
 
 # ── 4. Loading ───────────────────────────────────────────────────────────────
 step 4/5 "Loading"
 t0=$SECONDS
-docker logs -f "$CONTAINER_NAME" 2>&1 | grep --line-buffered -E 'load_tensors|model buffer|KV buffer|compute buffer|error|failed|listening' &
+docker logs -f "$CONTAINER_NAME" 2>&1 | grep --line-buffered -E ' E |error|failed' &
 LOGPID=$!
 trap 'kill $LOGPID 2>/dev/null || true' EXIT
+next=10
 until curl -sf "http://$HOST:$PORT/health" >/dev/null 2>&1; do
     [[ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null)" == true ]] \
         || { docker logs --tail 30 "$CONTAINER_NAME" >&2; die "the server stopped while loading"; }
@@ -134,6 +149,11 @@ until curl -sf "http://$HOST:$PORT/health" >/dev/null 2>&1; do
     if ((gtt > gtt_total - GTT_MARGIN_GIB * 1024)); then
         docker stop -t 5 "$CONTAINER_NAME" >/dev/null 2>&1 || true
         die "stopped: GTT reached $((gtt / 1024)) of $((gtt_total / 1024)) GiB while loading. Lower CONTEXT or PARALLEL."
+    fi
+    if ((SECONDS - t0 >= next)); then
+        printf '  %4ds  %5.1f of ~%s GiB loaded (%d%%)\n' $((SECONDS - t0)) "$(awk '{print $1/2^30}' "$GTT_USED")" "$EST_GIB" \
+            "$(awk -v e="$EST_GIB" '{printf "%d", 100*$1/2^30/e}' "$GTT_USED")"
+        next=$((next + 10))
     fi
     sleep 2
 done
@@ -149,3 +169,8 @@ reply=$(curl -sf "${AUTH[@]}" "http://$HOST:$PORT/v1/chat/completions" -H 'Conte
     || die "smoke test failed; docker logs $CONTAINER_NAME"
 echo "  model says: $reply"
 printf '\n\033[1;32m%s is now LIVE on http://%s:%s/v1\033[0m\n' "$SERVED_NAME" "$HOST" "$PORT"
+if [[ "${FOREGROUND:-0}" == 1 ]]; then
+    trap - EXIT
+    docker logs -f --since 0s "$CONTAINER_NAME" &
+    exit "$(docker wait "$CONTAINER_NAME")"
+fi

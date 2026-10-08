@@ -11,7 +11,22 @@ image: **ROCm 10.1** with pwilkin's retained-PM4 runtime (the default), or **Vul
 - 8 requests at once, one q8_0 KV pool of 262,144 tokens shared between them; any one request can use the full
   262,144-token window
 - MTP speculative decoding (3 drafts)
-- `./start.sh` builds or pulls the image, starts the server, waits and smoke-tests it; `./stop.sh` stops it
+
+## Quick start
+
+```bash
+git clone https://github.com/halo-box/Qwen3.8-Flash-Next-Strix-Halo-llama.git
+cd Qwen3.8-Flash-Next-Strix-Halo-llama
+./start.sh
+```
+
+That is all. The first run downloads the model (~90 GiB into `~/models/qwen38-flash-next`, resumable, checked
+against Hugging Face's sha256), builds the engine image, loads the model and prints
+`Qwen3.8-Flash-Next is now LIVE on http://127.0.0.1:8080/v1`. Later starts take about 30 seconds.
+`BACKEND=vulkan ./start.sh` runs the Vulkan build instead; `./stop.sh` stops the server.
+
+Any OpenAI client works with that base URL and the model `Qwen3.8-Flash-Next`. The model thinks before answering:
+give replies enough `max_tokens`, or send `"chat_template_kwargs": {"enable_thinking": false}`.
 
 ## Performance
 
@@ -74,32 +89,7 @@ contexts, agents that re-read large prompts, or several users, ROCm.
 - Linux kernel 7.0 or newer, with GTT raised on the kernel command line (measured at `ttm.pages_limit=27262976`,
   104 GiB; the server uses 93 GiB on Vulkan, 96 GiB on ROCm)
 - Docker, with your user in the `docker` group
-- ~95 GB of disk for the model
-
-## Quick start
-
-```bash
-git clone https://github.com/halo-box/Qwen3.8-Flash-Next-Strix-Halo-llama.git
-cd Qwen3.8-Flash-Next-Strix-Halo-llama
-
-mkdir -p ~/models/qwen38-flash-next && cd ~/models/qwen38-flash-next
-curl -L -C - -O https://huggingface.co/agentionai/Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-GGUF/resolve/main/v2/Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-v2.gguf
-curl -L -C - -O https://huggingface.co/agentionai/Qwen3.8-Flash-Next-MTP-ROCmFP4-FAST-GGUF/resolve/main/Qwen3.8-Flash-Next-MTP-ROCmFP4-FAST.gguf
-cd -
-
-./start.sh                      # ROCm
-BACKEND=vulkan ./start.sh       # or Vulkan
-```
-
-`./start.sh` prints `Qwen3.8-Flash-Next is now LIVE on http://127.0.0.1:8080/v1` when it is ready. Any OpenAI client
-works with that base URL and the model `Qwen3.8-Flash-Next`. The model thinks before answering: give replies enough
-`max_tokens`, or send `"chat_template_kwargs": {"enable_thinking": false}`.
-
-```bash
-./start.sh restart              # after changing a setting
-./start.sh --print              # show the docker command
-./stop.sh
-```
+- ~95 GB of free disk
 
 ## Configuration
 
