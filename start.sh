@@ -100,9 +100,19 @@ fi
 docker run --rm "${DEVICES[@]}" --group-add "$(getent group render | cut -d: -f3)" \
     "$LOCAL_IMAGE" llama-server "${ARGS[@]}" --help >/dev/null 2>&1 \
     || die "llama-server rejected the arguments (run ./start.sh --print)"
-# Flush pending writes (image builds, downloads) first: GPU allocations made while
-# gigabytes of dirty pages are still in flight can fail and take the driver down.
+# GPU allocations that have to reclaim page cache first can fail on Vulkan
+# ("Couldn't update BO_VA (-12)", then device lost), and a failed load can take the
+# amdgpu driver down. So: wait until the previous server's GTT is released, flush
+# pending writes, and drop the model files' own cached pages (no root needed).
+for _ in $(seq 60); do (($(awk '{print int($1/1073741824)}' "$GTT_USED") < 2)) && break; sleep 1; done
+(($(awk '{print int($1/1073741824)}' "$GTT_USED") < 2)) || die "GTT still in use by something else; is another GPU program running?"
 sync
+if [[ "$EVICT_PAGE_CACHE" == 1 ]]; then
+    python3 -I -c 'import os, sys
+for p in sys.argv[1:]:
+    fd = os.open(p, os.O_RDONLY); os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED); os.close(fd)' \
+        "$MODEL_DIR/$MODEL_FILE" ${MTP_FILE:+"$MODEL_DIR/$MTP_FILE"}
+fi
 "${CMD[@]}" >/dev/null
 echo "  container $CONTAINER_NAME, backend $BACKEND, $PARALLEL slots, $CONTEXT-token KV pool ($KV_DTYPE)"
 

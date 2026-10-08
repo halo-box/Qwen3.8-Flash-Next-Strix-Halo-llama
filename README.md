@@ -139,7 +139,7 @@ environment wins). Arguments after `--` go to `llama-server` last, so they win
 | `KV_UNIFIED` | `1` | `0` gives each slot its own `CONTEXT / PARALLEL` instead of one shared pool |
 | `KV_DTYPE` | `q8_0` | KV cache type for the model and the draft head |
 | `BATCH` / `UBATCH` | `2048` / `2048` | prompt batch sizes |
-| `LAZY_MODE` / `LOAD_MODE` | `on-direct` / `mmap` (Vulkan), `none` (ROCm) | how the n-gram table is read, kept off the GPU; on ROCm `mmap` makes HIP map the whole file and exceed KFD's system-memory limit |
+| `LAZY_MODE` / `LOAD_MODE` | `on-direct` / `none` | the n-gram table is read row by row from disk, never loaded to the GPU; weights are read into GPU memory, not memory-mapped (see Troubleshooting) |
 | `MTP` | `1` | `0` serves without the draft head |
 | `SPEC_TYPE` / `MTP_DRAFT_N` / `MTP_ADAPTIVE` | `draft-mtp` / `3` / `0` | speculative decoding |
 | `SPEC_N_RS_SEQ` | `-1` | recurrent-state snapshots kept per slot for fast draft rollback ([#147](https://github.com/halo-box/strix-llama.cpp/pull/147)); `-1` follows `MTP_DRAFT_N`, lower saves memory |
@@ -166,6 +166,10 @@ Results land in `results/` (not tracked). Run them on an idle machine.
 
 ## Troubleshooting
 
+- **Don't load with `--load-mode mmap`.** On Vulkan it works on a fresh boot and later loads fail: `Couldn't update
+  BO_VA (-12)` in `dmesg`, then a lost device or a `llama-server` stuck in `D` state that only a reboot clears. On ROCm,
+  KFD refuses to map the whole file (`SVM mapping failed, exceeds resident system memory limit`). The recipe uses
+  `none`.
 - **Don't load the model while building images or doing heavy disk writes.** A load that starts while gigabytes of
   writes are still being flushed can fail its GPU allocations (`Couldn't update BO_VA (-12)` in `dmesg`); the server
   crashes, and the amdgpu driver can oops while cleaning up, leaving a `llama-server` stuck in `D` state that only a

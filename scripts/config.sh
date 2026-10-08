@@ -40,7 +40,7 @@ fi
 : "${BATCH:=2048}"
 : "${UBATCH:=2048}"
 : "${LAZY_MODE:=on-direct}"            # n-gram (PLE) table: on-direct | on | off
-: "${LOAD_MODE:=$([[ "$BACKEND" == rocm* ]] && echo none || echo mmap)}"  # ROCm: none (mmap makes HIP map the whole file and hit KFD's limit)
+: "${LOAD_MODE:=none}"                 # none | dio | mmap. Not mmap: on Vulkan it intermittently wedges amdgpu, on ROCm KFD refuses it
 
 # ── Speculative decoding ─────────────────────────────────────────────────────
 : "${MTP:=1}"                          # 0 serves without the draft head
@@ -58,3 +58,4 @@ fi
 : "${EXTRA_ARGS:=}"                    # appended to llama-server; they win over the above
 : "${READY_TIMEOUT:=1200}"             # seconds start.sh waits for /health
 : "${GTT_MARGIN_GIB:=1}"               # start.sh stops the server if GTT gets this close to its limit while loading
+: "${EVICT_PAGE_CACHE:=1}"             # drop the model files from the page cache before loading (see README: Troubleshooting)
