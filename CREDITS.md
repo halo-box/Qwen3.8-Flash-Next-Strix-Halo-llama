@@ -17,6 +17,12 @@ This recipe is glue around other people's work. Where a file, setting or idea ca
   ([#27739](https://github.com/ggml-org/llama.cpp/pull/27739)); `--kv-unified-per-slot` from
   [#24124](https://github.com/ggml-org/llama.cpp/pull/24124).
 
+## Patches
+
+- `docker/patches/fattn-mask-kv-max-partial-tile.patch` is this repository's: a bounds check in
+  `flash_attn_mask_to_KV_max` (ggml CUDA/HIP) for the last, partial tile of a prompt chunk, found when a ~241k-token
+  prompt faulted the GPU.
+
 ## Containers
 
 - [kyuz0/amd-strix-halo-toolboxes](https://github.com/kyuz0/amd-strix-halo-toolboxes): `docker/Dockerfile.rocm` and
@@ -40,6 +46,7 @@ This recipe is glue around other people's work. Where a file, setting or idea ca
   (`v2/`) and [agentionai/Qwen3.8-Flash-Next-MTP-ROCmFP4-FAST-GGUF](https://huggingface.co/agentionai/Qwen3.8-Flash-Next-MTP-ROCmFP4-FAST-GGUF),
   quantized by [Agention](https://agention.ai). The q8_0 KV advice and the MTP draft-length measurements on their
   model cards are where this recipe's defaults started.
+- The vision tower: `mmproj/mmproj-Qwen3.8-Flash-Next-f16.gguf` from the same Agention repository.
 - The ROCmFP4 format: [charlie12345/ROCmFPX](https://github.com/charlie12345/ROCmFPX) and
   [ciru-ai/ROCmFPX](https://github.com/ciru-ai/ROCmFPX) (MIT).
 
@@ -60,5 +67,6 @@ This recipe is glue around other people's work. Where a file, setting or idea ca
   the shape of this repository and README — one `./start.sh` that prepares, checks, launches, waits and smoke-tests;
   `scripts/config.sh` with `.env` and environment overrides; measured performance and memory tables up front.
 - [claudejaune/Qwen3.8-Halogen-Flash-Strix-Halo](https://github.com/claudejaune/Qwen3.8-Halogen-Flash-Strix-Halo):
-  Strix Halo host preparation (GTT kernel parameters, `amd_iommu=off`, the `accelerator-performance` tuned
-  profile, `--ipc=host`) and the rule that a `.env` file is data, never sourced.
+  `setup.sh` follows its setup.sh (host checks, the GTT kernel parameters `ttm.pages_limit=31457280
+  amdgpu.gttsize=122880`, `amd_iommu=off`, the `accelerator-performance` tuned profile, one reboot at the end),
+  plus `--ipc=host` and the rule that a `.env` file is data, never sourced.
