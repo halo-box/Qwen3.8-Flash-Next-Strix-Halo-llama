@@ -14,7 +14,7 @@ if [[ -f "$_env" ]]; then
 fi
 
 # ── Engine ───────────────────────────────────────────────────────────────────
-: "${BACKEND:=vulkan}"                 # vulkan | rocm10.1 | rocm10.1-pm4 | rocm10.0-pm4
+: "${BACKEND:=rocm10.1-pm4}"                # vulkan | rocm10.1 | rocm10.1-pm4 | rocm10.0-pm4
 : "${IMAGE_REPO:=ghcr.io/halo-box/qwen3.8-flash-next-strix-halo-llama}"
 : "${IMAGE:=$IMAGE_REPO:$BACKEND}"
 : "${LOCAL_IMAGE:=qfn-strix:$BACKEND}" # built by scripts/prepare.sh when the pull fails

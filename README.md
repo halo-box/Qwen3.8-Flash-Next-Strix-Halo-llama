@@ -127,7 +127,7 @@ environment wins). Arguments after `--` go to `llama-server` last, so they win
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `BACKEND` | `vulkan` | `vulkan`, `rocm10.1`, `rocm10.1-pm4` or `rocm10.0-pm4` |
+| `BACKEND` | `rocm10.1-pm4` | `rocm10.1-pm4`, `rocm10.1`, `rocm10.0-pm4` or `vulkan` |
 | `MODEL_DIR` | `~/models/qwen38-flash-next` | directory holding the model files, mounted read-only |
 | `MODEL_FILE` / `MTP_FILE` | the two Agention files | file names inside `MODEL_DIR` |
 | `MMPROJ_FILE` | empty | a vision projector in `MODEL_DIR` enables image input |
