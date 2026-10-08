@@ -22,6 +22,7 @@ case "$BACKEND" in
     rocm10.0-pm4) BUILD=(-f docker/Dockerfile.rocm --build-arg ROCM_VERSION=10.0 --build-arg PM4=1) ;;
     *) echo "Error: unknown BACKEND '$BACKEND'" >&2; exit 1 ;;
 esac
+BUILD+=(--build-arg "LLAMA_PRS=$LLAMA_PRS")
 ((REBUILD)) && BUILD+=(--no-cache)
 echo "building $LOCAL_IMAGE (Vulkan: ~5 min; ROCm with PM4: 40-60 min)"
 docker build -t "$LOCAL_IMAGE" "${BUILD[@]}" .

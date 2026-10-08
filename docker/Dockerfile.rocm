@@ -86,7 +86,7 @@ printf 'rocm_systems=%s\n' "$(git -C /opt/strix/src/rocm-systems rev-parse --sho
 EOF
 
 ARG LLAMA_REPO=https://github.com/halo-box/strix-llama.cpp.git
-ARG LLAMA_COMMIT=2e7bfc22d2f1b554f023362c709e0844c42d63ef
+ARG LLAMA_COMMIT=3dd2830a8439ef81c0afd3af6fb26cb21536abc0
 WORKDIR /opt/llama.cpp
 # Open PRs merged on top of the pinned commit, as "number:sha" pairs. The build
 # fails if a PR head moved, so an image is always reproducible from its tag.

@@ -1,4 +1,0 @@
-parallel	context	kv_unified	per_slot	result	load_s	gtt_gib	mem_avail_gib	warnings
-8	2097152	0	262144	FAIL	1148	0.0	119.8	
-8	1048576	1	1048576	FAIL	76	0.0	120.4	Failed to allocate pinned memory ;n_ctx_seq (1048576) > n_ctx_train
-4	1048576	0	262144	FAIL	808	0.0	119.7	

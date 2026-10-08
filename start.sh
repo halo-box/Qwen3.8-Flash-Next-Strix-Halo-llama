@@ -30,6 +30,9 @@ fi
 # shellcheck source=scripts/config.sh
 . scripts/config.sh
 
+GTT_USED=$(ls /sys/class/drm/card*/device/mem_info_gtt_used | head -n1)
+GTT_TOTAL=${GTT_USED%_used}_total
+
 step() { printf '\n\033[1m[%s] %s\033[0m\n' "$1" "$2"; }
 die() { echo "Error: $*" >&2; exit 1; }
 
@@ -112,17 +115,17 @@ until curl -sf "http://$HOST:$PORT/health" >/dev/null 2>&1; do
     [[ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null)" == true ]] \
         || { docker logs --tail 30 "$CONTAINER_NAME" >&2; die "the server stopped while loading"; }
     ((SECONDS - t0 < READY_TIMEOUT)) || die "not ready after ${READY_TIMEOUT}s"
-    # GTT is carved out of system RAM: past ~100 GiB on a 128 GB box the kernel's
-    # OOM killer takes host services down instead of the allocation failing.
-    avail=$(awk '/MemAvailable/{print int($2/1048576)}' /proc/meminfo)
-    if ((avail < MIN_FREE_GIB)); then
+    # Past the ttm.pages_limit ceiling TTM swaps GPU buffers to shmem, and with swap
+    # full the kernel OOM-kills host services instead of failing the allocation.
+    gtt=$(awk '{print int($1/1048576)}' "$GTT_USED") gtt_total=$(awk '{print int($1/1048576)}' "$GTT_TOTAL")
+    if ((gtt > gtt_total - GTT_MARGIN_GIB * 1024)); then
         docker stop -t 5 "$CONTAINER_NAME" >/dev/null 2>&1 || true
-        die "stopped: only ${avail} GiB of RAM left while loading (MIN_FREE_GIB=$MIN_FREE_GIB). Lower CONTEXT or PARALLEL."
+        die "stopped: GTT reached $((gtt / 1024)) of $((gtt_total / 1024)) GiB while loading. Lower CONTEXT or PARALLEL."
     fi
     sleep 2
 done
 kill $LOGPID 2>/dev/null || true
-echo "  ready in $((SECONDS - t0))s, $(awk '{printf "%.1f",$1/2^30}' /sys/class/drm/card0/device/mem_info_gtt_used) GiB GTT, $(awk '/MemAvailable/{print int($2/1048576)}' /proc/meminfo) GiB RAM free"
+echo "  ready in $((SECONDS - t0))s, $(awk '{printf "%.1f",$1/2^30}' "$GTT_USED") of $(awk '{printf "%.0f",$1/2^30}' "$GTT_TOTAL") GiB GTT in use"
 
 # ── 5. Smoke test ────────────────────────────────────────────────────────────
 step 5/5 "Smoke test"

@@ -9,6 +9,7 @@
 : "${IMAGE:=$IMAGE_REPO:$BACKEND}"
 : "${LOCAL_IMAGE:=qfn-strix:$BACKEND}" # built by scripts/prepare.sh when the pull fails
 : "${CONTAINER_NAME:=qwen38-flash-next-strix}"
+: "${LLAMA_PRS:=151:3cb54eb4811f11faa41b787bb273a4273c9e7e36}"  # open PRs merged at build time (number:sha)
 
 # ── Model ────────────────────────────────────────────────────────────────────
 : "${MODEL_DIR:=/srv/models/gguf/qwen4exp}"
@@ -45,4 +46,4 @@
 # ── Misc ─────────────────────────────────────────────────────────────────────
 : "${EXTRA_ARGS:=}"                    # appended to llama-server; they win over the above
 : "${READY_TIMEOUT:=1200}"             # seconds start.sh waits for /health
-: "${MIN_FREE_GIB:=8}"                 # start.sh stops the server if free RAM drops below this while loading
+: "${GTT_MARGIN_GIB:=1}"               # start.sh stops the server if GTT gets this close to its limit while loading
