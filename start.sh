@@ -49,13 +49,14 @@ ARGS=(
     -m "/models/$MODEL_FILE" --alias "$SERVED_NAME"
     --host 0.0.0.0 --port 8080
     -ngl 999 -fa on --jinja --fit off
-    -np "$PARALLEL" -c "$CONTEXT" --kv-unified
+    -np "$PARALLEL" -c "$CONTEXT"
     -ctk "$KV_DTYPE" -ctv "$KV_DTYPE"
     -b "$BATCH" -ub "$UBATCH"
     --load-mode "$LOAD_MODE" --lazy-mode "$LAZY_MODE"
     --temp "$TEMPERATURE" --top-p "$TOP_P" --top-k "$TOP_K"
     --metrics
 )
+if [[ "$KV_UNIFIED" == 1 ]]; then ARGS+=(--kv-unified --kv-unified-per-slot "$CONTEXT_PER_SLOT"); else ARGS+=(--no-kv-unified); fi
 [[ -n "$API_KEY" ]] && ARGS+=(--api-key "$API_KEY")
 [[ -n "$MMPROJ_FILE" ]] && ARGS+=(--mmproj "/models/$MMPROJ_FILE")
 if [[ "$MTP" == 1 ]]; then
@@ -111,10 +112,17 @@ until curl -sf "http://$HOST:$PORT/health" >/dev/null 2>&1; do
     [[ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null)" == true ]] \
         || { docker logs --tail 30 "$CONTAINER_NAME" >&2; die "the server stopped while loading"; }
     ((SECONDS - t0 < READY_TIMEOUT)) || die "not ready after ${READY_TIMEOUT}s"
+    # GTT is carved out of system RAM: past ~100 GiB on a 128 GB box the kernel's
+    # OOM killer takes host services down instead of the allocation failing.
+    avail=$(awk '/MemAvailable/{print int($2/1048576)}' /proc/meminfo)
+    if ((avail < MIN_FREE_GIB)); then
+        docker stop -t 5 "$CONTAINER_NAME" >/dev/null 2>&1 || true
+        die "stopped: only ${avail} GiB of RAM left while loading (MIN_FREE_GIB=$MIN_FREE_GIB). Lower CONTEXT or PARALLEL."
+    fi
     sleep 2
 done
 kill $LOGPID 2>/dev/null || true
-echo "  ready in $((SECONDS - t0))s"
+echo "  ready in $((SECONDS - t0))s, $(awk '{printf "%.1f",$1/2^30}' /sys/class/drm/card0/device/mem_info_gtt_used) GiB GTT, $(awk '/MemAvailable/{print int($2/1048576)}' /proc/meminfo) GiB RAM free"
 
 # ── 5. Smoke test ────────────────────────────────────────────────────────────
 step 5/5 "Smoke test"

@@ -22,7 +22,9 @@
 : "${PORT:=8080}"
 : "${API_KEY:=}"
 : "${PARALLEL:=8}"                     # requests decoded together (slots)
-: "${CONTEXT:=262144}"                 # the KV pool, shared by all slots (--kv-unified)
+: "${CONTEXT:=262144}"                 # total KV pool in tokens
+: "${CONTEXT_PER_SLOT:=262144}"        # cap per slot (--kv-unified-per-slot); the model's native window
+: "${KV_UNIFIED:=1}"                   # 1: one pool any slot can fill; 0: CONTEXT/PARALLEL per slot
 : "${KV_DTYPE:=q8_0}"                  # f16 | q8_0 | q4_0
 : "${BATCH:=2048}"
 : "${UBATCH:=2048}"
@@ -43,3 +45,4 @@
 # ── Misc ─────────────────────────────────────────────────────────────────────
 : "${EXTRA_ARGS:=}"                    # appended to llama-server; they win over the above
 : "${READY_TIMEOUT:=1200}"             # seconds start.sh waits for /health
+: "${MIN_FREE_GIB:=8}"                 # start.sh stops the server if free RAM drops below this while loading
