@@ -33,7 +33,8 @@ docker run --rm "${DEV[@]}" --group-add "$(getent group render | cut -d: -f3)" -
     -c 2048 -b 2048 --chunks "$CHUNKS" 2>&1 | grep -E 'Final estimate|^\[' | tail -2
 
 echo "## greedy consistency ($PARALLEL concurrent vs alone, MTP=$MTP)"
-./start.sh restart >/dev/null
-python3 -I bench/consistency.py "http://$HOST:$PORT/v1" "$PARALLEL"
+./start.sh restart >/dev/null || { echo "  FAIL: server did not start"; exit 1; }
+rc=0; python3 -I bench/consistency.py "http://$HOST:$PORT/v1" "$PARALLEL" || rc=$?
 ./stop.sh >/dev/null
+exit $rc
 } | tee "$OUT"
