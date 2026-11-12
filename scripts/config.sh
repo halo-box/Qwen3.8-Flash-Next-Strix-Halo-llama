@@ -14,16 +14,14 @@ if [[ -f "$_env" ]]; then
 fi
 
 # ── Engine ───────────────────────────────────────────────────────────────────
-: "${BACKEND:=rocm}"                  # rocm (ROCm 10.1 + retained PM4) | vulkan (Mesa RADV)
-: "${IMAGE_REPO:=ghcr.io/halo-box/qwen3.8-flash-next-strix-halo-llama}"
+: "${BACKEND:=rocm}"                  # rocm | vulkan
+case "$BACKEND" in
+    rocm)   : "${IMAGE:=ghcr.io/halo-box/strix-llama.cpp:server-rocm-b12385@sha256:683d8e456aa52acd6ae352f7f3a91abfc3b1934db1a1a4151a199a9e97221afd}" ;;
+    vulkan) : "${IMAGE:=ghcr.io/halo-box/strix-llama.cpp:server-vulkan-b12385@sha256:b41902a64e4bd4f2bde63da430c5167c0ecd22df4c20a7b2da066318a1a7fd82}" ;;
+    *) echo "Error: BACKEND must be rocm or vulkan, got '$BACKEND'" >&2; exit 1 ;;
+esac
+: "${SERVER_BIN:=}"                     # llama-server in an image whose entrypoint is not it; empty: the image's entrypoint
 : "${CONTAINER_NAME:=qwen38-flash-next-strix}"
-: "${LLAMA_PRS:=151:3cb54eb4811f11faa41b787bb273a4273c9e7e36}"  # open PRs merged at build time (number:sha)
-# The image tag is a hash of everything that goes into the image (its Dockerfile, which pins the
-# engine and runtime commits, the patches and LLAMA_PRS): changing any of them means a new image.
-_root="$(dirname "${BASH_SOURCE[0]}")/.."
-_hash=$(cat "$_root/docker/Dockerfile.$BACKEND" "$_root"/docker/patches/* 2>/dev/null | { cat; echo "$LLAMA_PRS"; } | sha256sum | cut -c1-12)
-: "${IMAGE:=$IMAGE_REPO:$BACKEND-$_hash}"
-LOCAL_IMAGE=$IMAGE
 
 # ── Model ────────────────────────────────────────────────────────────────────
 : "${MODEL_DIR:=$HOME/models/qwen38-flash-next}"

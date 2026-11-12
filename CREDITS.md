@@ -5,38 +5,24 @@ This recipe is glue around other people's work. Where a file, setting or idea ca
 ## Engine
 
 - [halo-box/strix-llama.cpp](https://github.com/halo-box/strix-llama.cpp): the Strix Halo fork of llama.cpp this
-  recipe serves with, pinned at `bed1b8a14`. It includes
-  [#150](https://github.com/halo-box/strix-llama.cpp/pull/150) by [pwilkin](https://github.com/pwilkin) (HIP decode
-  throughput for Qwen3.8-Flash-Next) and [#147](https://github.com/halo-box/strix-llama.cpp/pull/147) by
-  [LaurentZuijdwijk](https://github.com/LaurentZuijdwijk) (`--spec-n-rs-seq`, capping the recurrent rollback
-  snapshots MTP keeps per slot). [#151](https://github.com/halo-box/strix-llama.cpp/pull/151)
-  (`--spec-draft-max-slots`) is merged at build time until it lands.
+  recipe serves with, from its own `server-rocm` and `server-vulkan` images (built from upstream's `.devops/`
+  Dockerfiles). It includes [#150](https://github.com/halo-box/strix-llama.cpp/pull/150) by
+  [pwilkin](https://github.com/pwilkin) (HIP decode throughput for Qwen3.8-Flash-Next),
+  [#147](https://github.com/halo-box/strix-llama.cpp/pull/147) by [LaurentZuijdwijk](https://github.com/LaurentZuijdwijk)
+  (`--spec-n-rs-seq`), [#151](https://github.com/halo-box/strix-llama.cpp/pull/151) (`--spec-draft-max-slots`), and
+  [#215](https://github.com/halo-box/strix-llama.cpp/pull/215) / [#216](https://github.com/halo-box/strix-llama.cpp/pull/216)
+  (1M context and multi-slot compute memory for Flash-Next).
 - [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) and [ggml](https://github.com/ggml-org/ggml), by
   Georgi Gerganov and the llama.cpp contributors (MIT). `qwen4exp` (Qwen3.8-Flash-Next) support is by Daniel Han
   ([#27742](https://github.com/ggml-org/llama.cpp/pull/27742)); the MTP graph by JJJYmmm
   ([#27739](https://github.com/ggml-org/llama.cpp/pull/27739)); `--kv-unified-per-slot` from
   [#24124](https://github.com/ggml-org/llama.cpp/pull/24124).
-
-## Patches
-
-- `docker/patches/fattn-mask-kv-max-partial-tile.patch` is this repository's: a bounds check in
-  `flash_attn_mask_to_KV_max` (ggml CUDA/HIP) for the last, partial tile of a prompt chunk, found when a ~241k-token
-  prompt faulted the GPU.
-
-## Containers
-
-- [kyuz0/amd-strix-halo-toolboxes](https://github.com/kyuz0/amd-strix-halo-toolboxes): `docker/Dockerfile.rocm` and
-  `docker/Dockerfile.vulkan` are adapted from its `Dockerfile.rocm-10.0`, `Dockerfile.rocm-10.0-strix-llama` and
-  `vulkan-radv` images (Fedora 44 base, TheRock Core SDK packages, the retained-PM4 runtime build and its gates,
-  container device flags). `docker/patches/llama-grammar.patch` is copied from it. That repository carries no license
-  file; ask its author before redistributing these parts.
-- `docker/patches/llama-cpp-25992-rocm-host-buffer.patch`: kyuz0's packaging of the workaround for
-  [llama.cpp #25992](https://github.com/ggml-org/llama.cpp/issues/25992), based on
-  [PR #25863](https://github.com/ggml-org/llama.cpp/pull/25863) (MIT).
-- [pwilkin/rocm-systems](https://github.com/pwilkin/rocm-systems) (`ilintar-experiments`): the retained-PM4 ROCr +
-  HIP runtime in the `-pm4` images, built the way [pwilkin/strix-halo](https://github.com/pwilkin/strix-halo)'s
-  `install.sh` does.
-- [ROCm/TheRock](https://github.com/ROCm/TheRock): ROCm 10.0 and 10.1 for gfx1151, from AMD's package repository.
+- Earlier versions of this recipe built their own images from Dockerfiles adapted from
+  [kyuz0/amd-strix-halo-toolboxes](https://github.com/kyuz0/amd-strix-halo-toolboxes), with pwilkin's retained-PM4
+  runtime. Two patches they carried go to strix-llama.cpp instead: the `flash_attn_mask_to_KV_max` bounds check for
+  the last, partial tile of a prompt chunk (this repository's, found when a ~241k-token prompt faulted the GPU), and
+  KYmidnight's `MAX_REPETITION_THRESHOLD` raise for large tool schemas
+  ([kyuz0/amd-strix-halo-toolboxes#70](https://github.com/kyuz0/amd-strix-halo-toolboxes/issues/70)).
 
 ## Model
 
@@ -57,8 +43,8 @@ This recipe is glue around other people's work. Where a file, setting or idea ca
 - kyuz0's [measured launch line](https://github.com/kyuz0/amd-strix-halo-toolboxes/blob/main/docs/building.md#retained-pm4-strix-halo-build-rocm-100-strix-llama)
   for `rocm-10.0-strix-llama` (`--lazy-mode on-direct`, never `GGML_CUDA_ENABLE_UNIFIED_MEMORY`), and his
   [AI Toolbox Cockpit](https://github.com/kyuz0/ai-toolbox-cockpit) profiles for the sibling Flash-Next forks.
-- `bench/speed.py` reimplements the measurement method of MiaAI-Lab's `tools/bench.py` (prompt sizes, the code
-  and prose decode tasks, medians, barrier-started concurrency, server-side timings); no code is copied.
+- [MiaAI-Lab/sparkDash](https://github.com/MiaAI-Lab/sparkDash) (Apache 2.0): the Decode and Prefill benchmarks behind every
+  speed figure. `bench/sparkdash.py` only drives its API; the prompts and the arithmetic are sparkDash's.
 
 ## Structure
 

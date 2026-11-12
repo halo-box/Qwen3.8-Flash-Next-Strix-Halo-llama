@@ -1,0 +1,2 @@
+rocm-fp4-ub4096   | BACKEND=rocm UBATCH=4096 PARALLEL=2                                | --clients 1,2
+rocm-fp4-mtpq8    | BACKEND=rocm MTP_FILE=mtp-Qwen3.8-Flash-Next-Q8_0.gguf             | --clients 1,2,4

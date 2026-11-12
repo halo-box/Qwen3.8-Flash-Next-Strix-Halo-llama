@@ -1,13 +1,8 @@
 #!/usr/bin/env bash
 # prepare.sh — one-time setup, safe to re-run: the model files, then the engine image.
-#
-#   scripts/prepare.sh            download what is missing; pull the image, or build it
-#   scripts/prepare.sh --rebuild  rebuild the image from scratch
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 . scripts/config.sh
-
-REBUILD=0; [[ "${1:-}" == --rebuild ]] && REBUILD=1
 
 # ── Model files (resumable; verified once against Hugging Face's sha256) ─────
 fetch() {  # fetch FILE URL SIZE SHA256 DEFAULT_NAME; only the default files are downloaded
@@ -47,21 +42,6 @@ if [[ "$VISION" == 1 ]]; then
         mmproj-Qwen3.8-Flash-Next-f16.gguf
 fi
 
-# ── Engine image: pull the prebuilt one, else build it ───────────────────────
-if ((!REBUILD)) && docker image inspect "$LOCAL_IMAGE" >/dev/null 2>&1; then
-    exit 0
-fi
-if ((!REBUILD)) && [[ "${PULL:-1}" == 1 ]] && docker pull "$IMAGE" 2>/dev/null; then
-    docker tag "$IMAGE" "$LOCAL_IMAGE"
-    echo "pulled $IMAGE"
-    exit 0
-fi
-case "$BACKEND" in
-    rocm)   BUILD=(-f docker/Dockerfile.rocm) ;;
-    vulkan) BUILD=(-f docker/Dockerfile.vulkan) ;;
-    *) echo "Error: BACKEND must be rocm or vulkan, got '$BACKEND'" >&2; exit 1 ;;
-esac
-BUILD+=(--build-arg "LLAMA_PRS=$LLAMA_PRS")
-((REBUILD)) && BUILD+=(--no-cache)
-echo "building $LOCAL_IMAGE (Vulkan: a few minutes; ROCm compiles its runtime: 5-60 min depending on cores)"
-docker build -t "$LOCAL_IMAGE" "${BUILD[@]}" .
+# ── Engine image: strix-llama.cpp's own, pinned in scripts/config.sh ─────────
+docker image inspect "$IMAGE" >/dev/null 2>&1 || docker pull "$IMAGE" \
+    || { echo "Error: could not pull $IMAGE" >&2; exit 1; }

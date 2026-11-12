@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# bench/sweep.sh PLAN — run bench/speed.py against a list of server configurations.
+# bench/sweep.sh PLAN — run bench/sparkdash.py against a list of server configurations.
 #
 # PLAN is a file with one configuration a line, three fields separated by "|": a label,
-# KEY=value settings for start.sh, and arguments for bench/speed.py. Blank lines and
+# KEY=value settings for start.sh, and arguments for bench/sparkdash.py. Blank lines and
 # # comments are skipped.
 #
 #   vulkan       | BACKEND=vulkan                       |
-#   vulkan-ub512 | BACKEND=vulkan UBATCH=512 BATCH=512  | --decode-runs 0
-#   rocm-c8      | BACKEND=rocm10.1-pm4                 | --clients 1,2,4,8 --prefill ""
+#   vulkan-ub512 | BACKEND=vulkan UBATCH=512 BATCH=512  | --clients ""
+#   rocm-c4      | BACKEND=rocm PARALLEL=4              | --clients 1,2,3,4 --prefill ""
 #
 # Each run waits for an idle machine (no build, no leftover llama-server, writes flushed)
-# and writes results/speed/<label>.md and results/speed/runs.jsonl. A server that will
+# and writes results/sparkdash/<label>.md and .json. A server that will
 # not exit stops the sweep: a wedged amdgpu driver needs a reboot.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 PLAN=${1:?usage: bench/sweep.sh PLAN}
-mkdir -p results/speed
-LOG=results/speed/sweep.log
+mkdir -p results/sparkdash
+LOG=results/sparkdash/sweep.log
 log() { printf '%s %s\n' "$(date +%T)" "$*" | tee -a "$LOG"; }
 
 idle() {
@@ -50,12 +50,12 @@ while IFS='|' read -r label settings speed_args; do
     if ! env $settings ./start.sh restart >> "$LOG" 2>&1 < /dev/null; then
         log "$label: server did not start"; ./stop.sh >/dev/null 2>&1; continue
     fi
-    { echo "settings: $settings"; echo "image: $(docker exec qwen38-flash-next-strix cat /opt/strix/versions.txt | paste -sd' ')"; echo; } \
-        > "results/speed/$label.md"
+    log "$label: image $(docker inspect -f '{{.Config.Image}} {{index .Config.Labels "org.opencontainers.image.revision"}}' qwen38-flash-next-strix)"
     eval "args=($speed_args)"
-    python3 -I bench/speed.py --label "$label" --jsonl results/speed/runs.jsonl "${args[@]}" \
-        >> "results/speed/$label.md" 2>&1 < /dev/null || log "$label: speed.py failed"
+    python3 -I bench/sparkdash.py --label "$label" "${args[@]}" >> "$LOG" 2>&1 < /dev/null \
+        || log "$label: sparkdash.py failed"
     ./stop.sh >/dev/null 2>&1
     log "$label: done"
 done < "$PLAN"
+docker rm -f sparkdash-bench-recipe >/dev/null 2>&1
 log "sweep finished"

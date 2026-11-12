@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Functional checks against the running server. Stdlib only.
 
-  tests/check.py                   chat, streaming, tool call, image, oversized request
-  tests/check.py --window          also one ~250k-token request: the full window works (slow, ~20 min)
+  tests/check.py                   chat, streaming, tool call, image, a request of the window's size refused
+  tests/check.py --window          also a request that fills the window exactly is served (slow, ~20 min)
   tests/check.py --long N          also N concurrent ~200k-token requests (every slot its own window; slow)
 
 Exits non-zero if any check fails.
@@ -24,11 +24,12 @@ print = functools.partial(print, flush=True)  # noqa: A001 - progress shows unde
 
 p = argparse.ArgumentParser()
 p.add_argument("--url", default="http://127.0.0.1:8080")
-p.add_argument("--window", action="store_true", help="one request near the full 262k window")
+p.add_argument("--window", action="store_true", help="one request that fills the slot's window exactly")
 p.add_argument("--long", type=int, default=0, help="concurrent ~200k-token requests to run")
 a = p.parse_args()
 BASE = a.url.rstrip("/")
 failed = []
+PARTIAL_TILE_REPLY = 13
 
 
 def post(path, body, timeout=3600):
@@ -36,10 +37,13 @@ def post(path, body, timeout=3600):
     return urllib.request.urlopen(req, timeout=timeout)
 
 
-def chat(messages, **kw):
-    body = {"messages": messages, "max_tokens": 512, "temperature": 0,
+def chat_body(messages, **kw):
+    return {"messages": messages, "max_tokens": 512, "temperature": 0,
             "chat_template_kwargs": {"enable_thinking": False}, **kw}
-    with post("/v1/chat/completions", body) as r:
+
+
+def chat(messages, **kw):
+    with post("/v1/chat/completions", chat_body(messages, **kw)) as r:
         return json.load(r)["choices"][0]
 
 
@@ -118,24 +122,48 @@ def synthetic(tokens, seed):
     return " ".join(words)
 
 
+def slot_ctx():
+    with urllib.request.urlopen(BASE + "/props", timeout=60) as r:
+        return json.load(r)["default_generation_settings"]["n_ctx"]
+
+
+def prompt_tokens(content):
+    """Tokens the server prefills for one user message, chat template included."""
+    with post("/apply-template", chat_body([{"role": "user", "content": content}])) as r:
+        return n_tokens(json.load(r)["prompt"])
+
+
+def exact_prompt(tokens, seed, question=""):
+    """A user message that is exactly `tokens` tokens once templated."""
+    rng = random.Random(seed)
+    words = synthetic(tokens - 64, seed).split()
+    for _ in range(40):
+        have = prompt_tokens(" ".join(words) + question)
+        if have == tokens:
+            return " ".join(words) + question
+        if have < tokens:
+            words += [rng.choice(("river", "engine", "winter")) for _ in range(max(1, (tokens - have) // 2))]
+        else:
+            del words[-max(1, (have - tokens) // 2):]
+    raise AssertionError(f"could not size a prompt to {tokens} tokens")
+
+
 def t_oversized():
-    prompt = synthetic(270_000, 1)
-    assert n_tokens(prompt) > 262_144, "test prompt is not over the window"
+    n = slot_ctx()
+    prompt = exact_prompt(n, 1)
     try:
         chat([{"role": "user", "content": prompt}], max_tokens=8)
     except urllib.error.HTTPError as e:
         assert e.code == 400, f"HTTP {e.code}"
-        return f"refused with HTTP 400: {e.read().decode()[:80]}"
-    raise AssertionError("a 270k-token prompt was accepted")
+        return f"{n} tokens refused with HTTP 400"
+    raise AssertionError(f"a {n}-token prompt was accepted by a {n}-token slot")
 
 
 def t_window():
-    # ~250k tokens, deliberately not a multiple of 16: the last prompt chunk is then a partial
-    # tile, the case that faulted the GPU in flash_attn_mask_to_KV_max before the patch.
-    prompt = synthetic(250_003, 7) + "\n\nWhat is the first word above? One word."
-    n = n_tokens(prompt)
-    out = chat([{"role": "user", "content": prompt}], max_tokens=16)
-    return f"{n} prompt tokens, answered {out['message']['content'].strip()[:20]!r}"
+    n, reply = slot_ctx(), PARTIAL_TILE_REPLY
+    prompt = exact_prompt(n - reply, 7, "\n\nWhat is the first word above? One word.")
+    out = chat([{"role": "user", "content": prompt}], max_tokens=reply)
+    return f"{n - reply} prompt + {reply} reply tokens, answered {out['message']['content'].strip()[:20]!r}"
 
 
 def t_long(n):
@@ -160,9 +188,9 @@ check("chat", t_chat)
 check("streaming", t_stream)
 check("tool call", t_tool)
 check("image input", t_image)
-check("request over 262k refused", t_oversized)
+check("a prompt of the window's size refused", t_oversized)
 if a.window:
-    check("one request near the full 262k window", t_window)
+    check("a request that fills the window served", t_window)
 if a.long:
     check(f"{a.long} concurrent long-context requests", lambda: t_long(a.long))
 print("all checks passed" if not failed else f"{len(failed)} failed: {', '.join(failed)}")

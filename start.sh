@@ -22,9 +22,12 @@ done
 
 # shellcheck source=scripts/config.sh
 . scripts/config.sh
+# shellcheck source=scripts/host.sh
+. scripts/host.sh
+[[ -n "$STRIX_RENDER" ]] || { echo "Error: no Strix Halo GPU (gfx1151) found; is the amdgpu driver loaded? Run ./setup.sh" >&2; exit 1; }
 
-GTT_USED=$(ls /sys/class/drm/card*/device/mem_info_gtt_used | head -n1)
-GTT_TOTAL=${GTT_USED%_used}_total
+GTT_USED=$STRIX_SYSFS/mem_info_gtt_used
+GTT_TOTAL=$STRIX_SYSFS/mem_info_gtt_total
 
 # ── Memory plan ──────────────────────────────────────────────────────────────
 # GTT the server takes, measured at the defaults (q8_0 KV, ubatch 2048, MTP, vision, 262k
@@ -54,10 +57,12 @@ step() { printf '\n\033[1m[%s] %s\033[0m\n' "$1" "$2"; }
 die() { echo "Error: $*" >&2; exit 1; }
 
 # ── 1. Setup ─────────────────────────────────────────────────────────────────
-step 1/5 "Setup"
-scripts/prepare.sh   # downloads the model and gets the image the first time; quick after that
-echo "  image:  $LOCAL_IMAGE ($(docker run --rm "$LOCAL_IMAGE" cat /opt/strix/versions.txt | paste -sd' '))"
-echo "  model:  $MODEL_DIR/$MODEL_FILE"
+if ((!PRINT)); then
+    step 1/5 "Setup"
+    scripts/prepare.sh
+    echo "  image:  $IMAGE ($(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.version"}} {{index .Config.Labels "org.opencontainers.image.revision"}}' "$IMAGE"))"
+    echo "  model:  $MODEL_DIR/$MODEL_FILE"
+fi
 
 # ── 2. Arguments ─────────────────────────────────────────────────────────────
 ARGS=(
@@ -86,9 +91,10 @@ fi
 [[ -n "$EXTRA_ARGS" ]] && ARGS+=($EXTRA_ARGS)
 ARGS+=("${EXTRA[@]}")
 
-DEVICES=(--device /dev/dri)
+DEVICES=(--device "$STRIX_RENDER")
+ENTRY=(); [[ -n "$SERVER_BIN" ]] && ENTRY=(--entrypoint "$SERVER_BIN")
 ENVS=()
-if [[ "$BACKEND" == rocm* ]]; then
+if [[ "$BACKEND" == rocm ]]; then
     DEVICES+=(--device /dev/kfd)
     ARGS+=(-dev ROCm0)
     [[ "$MTP" == 1 ]] && ARGS+=(--spec-draft-device ROCm0)
@@ -96,20 +102,22 @@ if [[ "$BACKEND" == rocm* ]]; then
 fi
 for v in $(compgen -e | grep -E '^(GGML_|AMD_|HSA_|RADV_|DEBUG_HIP_|LLAMA_ARG_)' || true); do ENVS+=(-e "$v=${!v}"); done
 
+GROUPS_ADD=()
+for g in $(stat -c %g "$STRIX_RENDER" $([[ "$BACKEND" == rocm ]] && echo /dev/kfd) | sort -u); do GROUPS_ADD+=(--group-add "$g"); done
+
 CMD=(docker run -d --name "$CONTAINER_NAME"
-     "${DEVICES[@]}" --group-add "$(getent group render | cut -d: -f3)"
-     --group-add "$(getent group video | cut -d: -f3)"
+     "${DEVICES[@]}" "${GROUPS_ADD[@]}"
      --ipc=host --security-opt seccomp=unconfined
-     -p "$HOST:$PORT:8080" -v "$MODEL_DIR:/models:ro" "${ENVS[@]}"
-     "$LOCAL_IMAGE" llama-server "${ARGS[@]}")
+     -p "$HOST:$PORT:8080" -v "$MODEL_DIR:/models:ro" "${ENVS[@]}" "${ENTRY[@]}"
+     "$IMAGE" "${ARGS[@]}")
 
 if ((PRINT)); then printf '%q ' "${CMD[@]}"; echo; exit 0; fi
 
 # ── 3. Launch ────────────────────────────────────────────────────────────────
 step 3/5 "Launch"
 # Check the arguments first, so a typo on restart leaves the running server alone.
-docker run --rm "${DEVICES[@]}" --group-add "$(getent group render | cut -d: -f3)" \
-    "$LOCAL_IMAGE" llama-server "${ARGS[@]}" --help >/dev/null 2>&1 \
+docker run --rm "${DEVICES[@]}" "${ENTRY[@]}" "${GROUPS_ADD[@]}" \
+    "$IMAGE" "${ARGS[@]}" --help >/dev/null 2>&1 \
     || die "llama-server rejected the arguments (run ./start.sh --print)"
 if docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
     if ((RESTART)); then ./stop.sh; else
