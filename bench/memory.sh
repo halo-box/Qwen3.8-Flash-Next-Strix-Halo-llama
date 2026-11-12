@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # bench/memory.sh PLAN — what each server configuration takes on the GPU.
 #
-# PLAN has one configuration a line, "label | KEY=value settings for start.sh". Each one is
-# started (FORCE=1: the memory plan is what is being measured; start.sh still stops a load
-# that nears the GTT limit), its device buffers are read from the server log, and it is
-# stopped. Writes results/memory/<plan name>.md:
+# PLAN has one configuration a line, "label | KEY=value settings for start.sh", smallest first.
+# Each one is started (FORCE=1: the memory plan is what is being measured; start.sh still kills
+# a load that passes its budget), its device buffers are read from the server log, and it is
+# stopped. The first configuration that does not load ends the run. Writes
+# results/memory/<plan name>.md:
 #
 #   | label | model | KV + RS | compute | GTT in use | result |
 set -uo pipefail
@@ -41,5 +42,6 @@ while IFS='|' read -r label settings; do
     echo "| $label | $(gib "$model") | $(gib "$kv") | $(gib "$compute") | $gtt | $result |" | tee -a "$OUT"
     ./stop.sh > /dev/null 2>&1
     rm -f "$log" "$log.clean" "$log.start"
+    [[ "$result" == ok ]] || break
     sleep 5
 done < "$PLAN"

@@ -11,13 +11,17 @@ the REST API, with the settings of Mia's Qwen3.8-Flash-Next README:
   from the first stream's first token to the last stream's last token.
 - Prefill: cold prompts with a unique prefix per run; speed from llama-server's own prompt timings.
 
-usage: bench/sparkdash.py [--label NAME] [--port 8080] [--clients 1,2,4] [--prefill 4096,...,131072]
+Decode runs --repeat times (default 3) and the tables show the median of each level, since a single
+prose run varies by 10-25% with sampling on.
+
+usage: bench/sparkdash.py [--label NAME] [--port 8080] [--clients 1,2,4] [--repeat 3] [--prefill 4096,...,131072]
 """
 from __future__ import annotations
 
 import argparse
 import json
 import pathlib
+import statistics
 import subprocess
 import sys
 import time
@@ -82,14 +86,17 @@ def run(sid, kind, body):
             return st
 
 
-def decode_table(job):
+def decode_table(jobs):
+    """Median over the repeated runs of each concurrency level."""
     rows = ["| Concurrent requests | Aggregate | Per request | TTFT |", "| ---: | ---: | ---: | ---: |"]
-    for w in job["results"]:
-        if w.get("error"):
-            rows.append(f"| {w['concurrency']} | {w['error']} | | |")
+    for waves in zip(*(j["results"] for j in jobs)):
+        ok = [w for w in waves if not w.get("error")]
+        if not ok:
+            rows.append(f"| {waves[0]['concurrency']} | {waves[0]['error']} | | |")
             continue
-        rows.append(f"| {w['concurrency']} | {w['aggregateDecodeTps']:.1f} tok/s | {w['meanDecodeTps']:.1f} tok/s "
-                    f"| {w['meanTtftMs']:.0f} ms |")
+        med = {k: statistics.median(w[k] for w in ok) for k in ("aggregateDecodeTps", "meanDecodeTps", "meanTtftMs")}
+        rows.append(f"| {ok[0]['concurrency']} | {med['aggregateDecodeTps']:.1f} tok/s | {med['meanDecodeTps']:.1f} tok/s "
+                    f"| {med['meanTtftMs']:.0f} ms |")
     return "\n".join(rows)
 
 
@@ -109,6 +116,7 @@ def main():
     p.add_argument("--port", type=int, default=8080)
     p.add_argument("--clients", default="1,2,4", help="decode concurrency levels; empty skips decode")
     p.add_argument("--max-tokens", type=int, default=400)
+    p.add_argument("--repeat", type=int, default=3, help="decode runs per type; the tables show the median")
     p.add_argument("--prefill", default="4096,8192,16384,32768,65536,131072", help="empty skips prefill")
     p.add_argument("--stop", action="store_true", help="remove the sparkDash container afterwards")
     a = p.parse_args()
@@ -119,10 +127,10 @@ def main():
     clients = [int(x) for x in a.clients.split(",") if x]
     if clients:
         for task, temp, thinking in (("prose", 0.7, True), ("code", 0.0, False)):
-            job = run(sid, "bench", {"concurrencies": clients, "maxTokens": a.max_tokens, "promptType": task,
-                                     "temperature": temp, "thinking": thinking})
-            out[task] = job
-            md += [f"\n**Decode, {task}**\n", decode_table(job)]
+            jobs = [run(sid, "bench", {"concurrencies": clients, "maxTokens": a.max_tokens, "promptType": task,
+                                       "temperature": temp, "thinking": thinking}) for _ in range(a.repeat)]
+            out[task] = jobs
+            md += [f"\n**Decode, {task}** (median of {a.repeat} runs)\n", decode_table(jobs)]
             print(md[-2] + "\n" + md[-1], flush=True)
     sizes = [int(x) for x in a.prefill.split(",") if x]
     if sizes:

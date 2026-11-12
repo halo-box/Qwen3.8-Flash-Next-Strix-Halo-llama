@@ -77,7 +77,7 @@ ARGS=(
     -ctk "$KV_DTYPE" -ctv "$KV_DTYPE"
     -b "$BATCH" -ub "$UBATCH"
     --load-mode "$LOAD_MODE" --lazy-mode "$LAZY_MODE"
-    --temp "$TEMPERATURE" --top-p "$TOP_P" --top-k "$TOP_K"
+    --temp "$TEMPERATURE" --top-p "$TOP_P" --top-k "$TOP_K" --min-p "$MIN_P"
     --metrics
     --ctx-checkpoints "$CTX_CHECKPOINTS" --cache-ram "$CACHE_RAM"
 )
@@ -86,7 +86,7 @@ if [[ "$KV_UNIFIED" == 1 ]]; then ARGS+=(--kv-unified); else ARGS+=(--no-kv-unif
 [[ "$VISION" == 1 ]] && ARGS+=(--mmproj "/models/$MMPROJ_FILE")
 if [[ "$MTP" == 1 ]]; then
     ARGS+=(--spec-type "$SPEC_TYPE" --spec-draft-model "/models/$MTP_FILE"
-           --spec-draft-ngl 999 --spec-draft-n-max "$MTP_DRAFT_N"
+           --spec-draft-ngl 999 --spec-draft-n-max "$MTP_DRAFT_N" --no-spec-draft-backend-sampling
            -ctkd "$KV_DTYPE" -ctvd "$KV_DTYPE")
     [[ "$MTP_ADAPTIVE" == 1 ]] && ARGS+=(--spec-draft-adaptive)
     ARGS+=(--spec-n-rs-seq "$SPEC_N_RS_SEQ" --spec-draft-p-min "$DRAFT_P_MIN")

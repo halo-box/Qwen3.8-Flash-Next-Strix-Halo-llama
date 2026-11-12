@@ -27,17 +27,17 @@ fetch() {  # fetch FILE URL SIZE SHA256 DEFAULT_NAME; only the default files are
 }
 mkdir -p "$MODEL_DIR"
 fetch "$MODEL_FILE" \
-    https://huggingface.co/agentionai/Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-GGUF/resolve/main/v2/Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-v2.gguf \
-    93484242816 1e4160caf999ae47b9276d66aea57aa85174699e4d9607b093f0324a0ab79674 \
-    Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-v2.gguf
+    https://huggingface.co/agentionai/Signal-3.8-Flash-Next-GGUF/resolve/main/AP-Q4_K_XL/Signal-3.8-Flash-Next-AP-Q4_K_XL.gguf \
+    101142769984 427a7a10dd5a98d77c71be62a89d14e7408fc61a84c6efe889393852282cd3c6 \
+    Signal-3.8-Flash-Next-AP-Q4_K_XL.gguf
 fetch "$MTP_FILE" \
-    https://huggingface.co/agentionai/Qwen3.8-Flash-Next-MTP-ROCmFP4-FAST-GGUF/resolve/main/Qwen3.8-Flash-Next-MTP-ROCmFP4-FAST.gguf \
-    2444519296 5046d69571bb35c699e19c7a00b36633c2fdfdd06d70482551744ec523a6b590 \
-    Qwen3.8-Flash-Next-MTP-ROCmFP4-FAST.gguf
+    https://huggingface.co/agentionai/Qwen3.8-Flash-Next-MTP-Q8_0-GGUF/resolve/main/Qwen3.8-Flash-Next-MTP-Q8_0.gguf \
+    4135893408 554f3d1230cc1a8e2d63e3322f113218f3e052156d98328e9f21fb97db48af7f \
+    Qwen3.8-Flash-Next-MTP-Q8_0.gguf
 
 if [[ "$VISION" == 1 ]]; then
     fetch "$MMPROJ_FILE" \
-        https://huggingface.co/agentionai/Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-GGUF/resolve/main/mmproj/mmproj-Qwen3.8-Flash-Next-f16.gguf \
+        https://huggingface.co/agentionai/Signal-3.8-Flash-Next-GGUF/resolve/main/mmproj-F16.gguf \
         904004128 f456cd796fdbdef0cadb22710b54e0071b6cdf22c07963365baa898267aec517 \
         mmproj-Qwen3.8-Flash-Next-f16.gguf
 fi

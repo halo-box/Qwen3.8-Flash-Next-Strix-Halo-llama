@@ -1,8 +1,0 @@
-# Where q8_0 KV's extra memory goes, and whether it grows with the streams. UD-Q4_K_XL, every window 262k.
-rocm q8 np1                   | BACKEND=rocm MODEL_FILE=Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf MTP_FILE=Qwen3.8-Flash-Next-MTP-Q8_0.gguf KV_DTYPE=q8_0 PARALLEL=1 CONTEXT_PER_SLOT=262144
-rocm q8 np2 per-slot          | BACKEND=rocm MODEL_FILE=Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf MTP_FILE=Qwen3.8-Flash-Next-MTP-Q8_0.gguf KV_DTYPE=q8_0 PARALLEL=2 CONTEXT_PER_SLOT=262144
-rocm q8 np4 per-slot          | BACKEND=rocm MODEL_FILE=Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf MTP_FILE=Qwen3.8-Flash-Next-MTP-Q8_0.gguf KV_DTYPE=q8_0 PARALLEL=4 CONTEXT_PER_SLOT=262144
-rocm q8 np4 unified 1M        | BACKEND=rocm MODEL_FILE=Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf MTP_FILE=Qwen3.8-Flash-Next-MTP-Q8_0.gguf KV_DTYPE=q8_0 PARALLEL=4 CONTEXT_PER_SLOT=262144 KV_UNIFIED=1
-rocm q8 np1 ub1024            | BACKEND=rocm MODEL_FILE=Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf MTP_FILE=Qwen3.8-Flash-Next-MTP-Q8_0.gguf KV_DTYPE=q8_0 PARALLEL=1 CONTEXT_PER_SLOT=262144 UBATCH=1024
-vulkan q8 np1                 | BACKEND=vulkan MODEL_FILE=Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf MTP_FILE=Qwen3.8-Flash-Next-MTP-Q8_0.gguf KV_DTYPE=q8_0 PARALLEL=1 CONTEXT_PER_SLOT=262144
-vulkan q8 np4 per-slot        | BACKEND=vulkan MODEL_FILE=Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf MTP_FILE=Qwen3.8-Flash-Next-MTP-Q8_0.gguf KV_DTYPE=q8_0 PARALLEL=4 CONTEXT_PER_SLOT=262144

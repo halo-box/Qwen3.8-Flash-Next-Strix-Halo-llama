@@ -11,7 +11,9 @@ This recipe is glue around other people's work. Where a file, setting or idea ca
   [#147](https://github.com/halo-box/strix-llama.cpp/pull/147) by [LaurentZuijdwijk](https://github.com/LaurentZuijdwijk)
   (`--spec-n-rs-seq`), [#151](https://github.com/halo-box/strix-llama.cpp/pull/151) (`--spec-draft-max-slots`), and
   [#215](https://github.com/halo-box/strix-llama.cpp/pull/215) / [#216](https://github.com/halo-box/strix-llama.cpp/pull/216)
-  (1M context and multi-slot compute memory for Flash-Next).
+  (1M context and multi-slot compute memory for Flash-Next), and [#270](https://github.com/halo-box/strix-llama.cpp/pull/270) /
+  [#271](https://github.com/halo-box/strix-llama.cpp/pull/271) (maskless QSA attention with a quantized KV cache on
+  Vulkan), which is what lets four 262k windows fit.
 - [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) and [ggml](https://github.com/ggml-org/ggml), by
   Georgi Gerganov and the llama.cpp contributors (MIT). `qwen4exp` (Qwen3.8-Flash-Next) support is by Daniel Han
   ([#27742](https://github.com/ggml-org/llama.cpp/pull/27742)); the MTP graph by JJJYmmm
@@ -28,13 +30,17 @@ This recipe is glue around other people's work. Where a file, setting or idea ca
 
 - [Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next), by the Qwen team (Qwen Community
   License 1.0).
-- [agentionai/Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-GGUF](https://huggingface.co/agentionai/Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-GGUF)
-  (`v2/`) and [agentionai/Qwen3.8-Flash-Next-MTP-ROCmFP4-FAST-GGUF](https://huggingface.co/agentionai/Qwen3.8-Flash-Next-MTP-ROCmFP4-FAST-GGUF),
-  quantized by [Agention](https://agention.ai). The q8_0 KV advice and the MTP draft-length measurements on their
-  model cards are where this recipe's defaults started.
-- The vision tower: `mmproj/mmproj-Qwen3.8-Flash-Next-f16.gguf` from the same Agention repository.
-- The ROCmFP4 format: [charlie12345/ROCmFPX](https://github.com/charlie12345/ROCmFPX) and
-  [ciru-ai/ROCmFPX](https://github.com/ciru-ai/ROCmFPX) (MIT).
+- [agentionai/Signal-3.8-Flash-Next-GGUF](https://huggingface.co/agentionai/Signal-3.8-Flash-Next-GGUF)
+  (`AP-Q4_K_XL`, and the vision tower `mmproj-F16.gguf`), the self-distilled fine-tune this recipe serves, and
+  [agentionai/Qwen3.8-Flash-Next-MTP-Q8_0-GGUF](https://huggingface.co/agentionai/Qwen3.8-Flash-Next-MTP-Q8_0-GGUF),
+  its draft head, by [AgentionAI](https://agention.ai) (Qwen Community License 1.0). The sampling defaults and
+  `--no-spec-draft-backend-sampling` come from Signal's model card.
+- Measured and not kept (see the README, "How the defaults were chosen"):
+  [agentionai/Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-GGUF](https://huggingface.co/agentionai/Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-GGUF)
+  with its ROCmFP4 MTP head (the ROCmFP4 format from [charlie12345/ROCmFPX](https://github.com/charlie12345/ROCmFPX)
+  and [ciru-ai/ROCmFPX](https://github.com/ciru-ai/ROCmFPX)), which earlier versions of this recipe served, and
+  [unsloth/Qwen3.8-Flash-Next-GGUF](https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF) `UD-Q4_K_XL` with its
+  Q8_0 MTP head, the v1.0.0 release recipe's model.
 
 ## Settings and measurements
 
