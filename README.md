@@ -113,6 +113,20 @@ Run on this machine at the defaults with the pinned images, all passing:
 | GTT peak / lowest usable RAM (`MemAvailable - CmaFree`) over the whole run | 94.9 / 17.0 GiB | 92.9 / 19.9 GiB |
 | amdgpu or OOM errors in the kernel log | none | none |
 
+### Tested on
+
+| Host | Distro, kernel | GTT | Result |
+| --- | --- | --- | --- |
+| GMKtec EVO-X2 (Ryzen AI Max+ 395, 128 GB) | Ubuntu 26.04, 7.0.0-43 | 104 GiB | every check above; a fresh clone runs the Quick start as written |
+
+Covered without the hardware: `tests/host_test.sh` (the gfx1151 found among other GPUs through KFD's topology),
+`tests/bootloader_test.sh` (the kernel-parameter step on rpm-ostree, kernelstub, grubby, Debian and Arch GRUB, and
+systemd-boot), and `./setup.sh --check` in Ubuntu 26.04, Debian 13, Fedora 44 and Arch containers. Not yet run: other
+vendors' Strix Halo boxes, other distros and kernels on the hardware, a second GPU in the same machine. The memory plan
+reads each host's own GTT limit, `MemTotal` and `CmaFree`, so a host with more usable memory gets a larger budget,
+not a different configuration. To add a host, open an issue with the output of `./setup.sh --check`, `./start.sh`
+and `python3 tests/check.py --window`.
+
 ## Requirements
 
 - Any Strix Halo (Ryzen AI Max, gfx1151) with 128 GB, whatever the vendor. A second GPU (eGPU, discrete card) can
