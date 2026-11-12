@@ -21,10 +21,11 @@ This recipe is glue around other people's work. Where a file, setting or idea ca
   [#24124](https://github.com/ggml-org/llama.cpp/pull/24124).
 - Earlier versions of this recipe built their own images from Dockerfiles adapted from
   [kyuz0/amd-strix-halo-toolboxes](https://github.com/kyuz0/amd-strix-halo-toolboxes), with pwilkin's retained-PM4
-  runtime. Two patches they carried go to strix-llama.cpp instead: the `flash_attn_mask_to_KV_max` bounds check for
-  the last, partial tile of a prompt chunk (this repository's, found when a ~241k-token prompt faulted the GPU), and
-  KYmidnight's `MAX_REPETITION_THRESHOLD` raise for large tool schemas
-  ([kyuz0/amd-strix-halo-toolboxes#70](https://github.com/kyuz0/amd-strix-halo-toolboxes/issues/70)).
+  runtime, and two patches. KYmidnight's `MAX_REPETITION_THRESHOLD` raise for large tool schemas
+  ([kyuz0/amd-strix-halo-toolboxes#70](https://github.com/kyuz0/amd-strix-halo-toolboxes/issues/70)) is now in
+  strix-llama.cpp ([#284](https://github.com/halo-box/strix-llama.cpp/pull/284)). This repository's
+  `flash_attn_mask_to_KV_max` bounds check, for a ~241k-token prompt that faulted the GPU, is not needed on this
+  build: a prompt that fills the window with a partial last tile is served on both backends without it.
 
 ## Model
 

@@ -51,6 +51,7 @@ esac
 : "${SPEC_TYPE:=draft-mtp}"            # e.g. draft-mtp,ngram-mod
 : "${MTP_DRAFT_N:=3}"                  # Signal, ROCm, 2 runs each: 3 drafts 36.1 prose / 53.9 code tok/s, 4 drafts 29.9 / 55.4
 : "${MTP_ADAPTIVE:=0}"
+: "${SPEC_DRAFT_MAX_SLOTS:=2}"         # draft only while at most this many requests generate (0 = always); Vulkan, 4 requests: prose 61.5 against 46.6 tok/s
 : "${DRAFT_P_MIN:=0}"                 # stop a draft chain below this draft probability
 : "${SPEC_N_RS_SEQ:=-1}"               # recurrent rollback snapshots per slot (#147); -1 follows MTP_DRAFT_N, 0 disables the fast path
 

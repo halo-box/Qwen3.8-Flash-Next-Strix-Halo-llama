@@ -26,7 +26,9 @@ AI Max+ 395, 128 GB, Ubuntu 26.04 kernel 7.0.0-43, 104 GiB of GTT, `amd_iommu=of
 measured with [sparkDash](https://github.com/MiaAI-Lab/sparkDash)'s Decode and Prefill benchmarks on the same machine,
 the way [Mia's AI Lab](https://github.com/MiaAI-Lab) measures its Qwen3.8-Flash-Next recipes, so the numbers can be
 compared with theirs. Prose: temperature 0.7, thinking on. Code: temperature 0, thinking off, a different Python task
-per stream. 400 tokens a stream, each decode run three times and the median shown.
+per stream. 400 tokens a stream, each decode run three times and the median shown. Vulkan's decode rows are with
+`--spec-draft-max-slots 2` (the default), its prefill rows from the same build and settings before that flag, which a
+single-request prefill does not use.
 
 How the figures are taken (sparkDash `da20ac5`, `DecodeBench` and `PrefillBench`):
 
@@ -48,17 +50,17 @@ sampling on, hence the median of three. `bench/sparkdash.py` runs it (see [Bench
 
 | Concurrent requests | Aggregate | Per request | TTFT |
 | ---: | ---: | ---: | ---: |
-| 1 | 36.1 tok/s | 36.1 tok/s | 99 ms |
-| 2 | 44.0 tok/s | 22.7 tok/s | 443 ms |
-| 4 | 46.6 tok/s | 12.6 tok/s | 819 ms |
+| 1 | 34.9 tok/s | 34.9 tok/s | 94 ms |
+| 2 | 46.0 tok/s | 24.2 tok/s | 447 ms |
+| 4 | 61.5 tok/s | 15.8 tok/s | 626 ms |
 
 **Decode, code**
 
 | Concurrent requests | Aggregate | Per request | TTFT |
 | ---: | ---: | ---: | ---: |
-| 1 | 53.9 tok/s | 53.9 tok/s | 338 ms |
-| 2 | 48.0 tok/s | 24.2 tok/s | 427 ms |
-| 4 | 65.8 tok/s | 16.8 tok/s | 872 ms |
+| 1 | 57.0 tok/s | 57.0 tok/s | 315 ms |
+| 2 | 48.7 tok/s | 24.6 tok/s | 432 ms |
+| 4 | 62.2 tok/s | 15.8 tok/s | 782 ms |
 
 **Prefill** (cold prompts)
 
@@ -73,11 +75,43 @@ sampling on, hence the median of three. `bench/sparkdash.py` runs it (see [Bench
 
 ### ROCm (`BACKEND=rocm`: 2 × 262k, f16 KV)
 
-@@ROCM@@
+**Decode, prose**
+
+| Concurrent requests | Aggregate | Per request | TTFT |
+| ---: | ---: | ---: | ---: |
+| 1 | 31.3 tok/s | 31.3 tok/s | 98 ms |
+| 2 | 47.4 tok/s | 24.2 tok/s | 707 ms |
+
+**Decode, code**
+
+| Concurrent requests | Aggregate | Per request | TTFT |
+| ---: | ---: | ---: | ---: |
+| 1 | 53.8 tok/s | 53.8 tok/s | 94 ms |
+| 2 | 65.8 tok/s | 33.2 tok/s | 432 ms |
+
+**Prefill** (cold prompts)
+
+| Prompt tokens | Prefill | TTFT |
+| ---: | ---: | ---: |
+| 4,136 | 1,001 tok/s | 4.14 s |
+| 8,230 | 1,004 tok/s | 8.21 s |
+| 16,419 | 999 tok/s | 16.46 s |
+| 32,805 | 985 tok/s | 33.34 s |
+| 65,573 | 958 tok/s | 68.46 s |
+| 131,109 | 922 tok/s | 142.35 s |
 
 ### Checks on the current build
 
-@@CHECKS@@
+Run on this machine at the defaults with the pinned images, all passing:
+
+| | Vulkan, 4 × 262k | ROCm, 2 × 262k |
+| --- | --- | --- |
+| `tests/check.py`: chat, streaming, a required tool call, image input | ok | ok |
+| a prompt of exactly 262,144 tokens is refused (HTTP 400) | ok | ok |
+| `--window`: 262,131 prompt + 13 reply tokens, the window filled exactly, the last prompt chunk a partial tile | served in 305 s | served in 308 s |
+| `--long`: every request ~200k tokens at once | 4 × 200k in 863 s | 2 × 200k in 451 s |
+| GTT peak / lowest usable RAM (`MemAvailable - CmaFree`) over the whole run | 94.9 / 17.0 GiB | 92.9 / 19.9 GiB |
+| amdgpu or OOM errors in the kernel log | none | none |
 
 ## Requirements
 
@@ -194,6 +228,7 @@ or a `.env` file next to `start.sh` (`KEY=value` lines, read as data, never sour
 | `KV_DTYPE` | `q8_0` (Vulkan), `f16` (ROCm) | KV cache type |
 | `UBATCH` | `2048` | prompt batch size |
 | `MTP` / `MTP_DRAFT_N` | `1` / `3` | MTP speculative decoding |
+| `SPEC_DRAFT_MAX_SLOTS` | `2` | draft only while at most this many requests generate (0 = always) |
 | `VISION` | `1` | image input |
 | `TEMPERATURE` / `TOP_P` / `TOP_K` / `MIN_P` | `0.6` / `0.95` / `20` / `0.05` | default sampling |
 | `CTX_CHECKPOINTS` / `CACHE_RAM` | `4` / `0` | per-slot state checkpoints and host prompt cache; both grow host RAM over time |
@@ -212,6 +247,8 @@ One request, 262,144-token window, MTP on, unless a row says otherwise; each fro
 | 3 MTP drafts, not 4 | Signal, ROCm, two runs each: 3 drafts 36.1 / 53.9 tok/s, 4 drafts 29.9 / 55.4 | 3 |
 | Agention's Q8_0 MTP head | the head Signal's card names; unsloth's Q8_0 head and Agention's ROCmFP4 head decode the same (33.5 / 52.4 against 32.8 / 53.6) | Agention Q8_0 |
 | No retained-PM4 ROCm runtime | kyuz0's PM4 build of the same commit (ROCm 10.0) against the official image (ROCm 10.1), one run each: decode +9% / +8%, prefill -2 to -3% | not used: one run, and a second image |
+| No flash-attention mask patch | earlier versions patched a GPU fault on a ~241k prompt whose last chunk is a partial tile; on this build, ROCm and Vulkan serve a 262,131-token prompt (a partial last tile) without it | not carried |
+| Draft only while at most 2 requests generate | Vulkan, 4 × 262k, aggregate tok/s at 1 / 2 / 4 requests: prose 36.1 / 44.0 / 46.6 drafting always, 34.9 / 46.0 / 61.5 with `--spec-draft-max-slots 2`; code 53.9 / 48.0 / 65.8 and 57.0 / 48.7 / 62.2. With 1, code at two requests fell to 28.3 | 2 |
 | `--no-spec-draft-backend-sampling` | Signal's card: draft sampling on the backend skips min-p for accepted drafts, so a repetition can run away | on |
 
 ## Checks
