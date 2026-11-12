@@ -1,3 +1,0 @@
-vulkan-fp4-np1    | BACKEND=vulkan PARALLEL=1                                          | --clients "" --prefill ""
-vulkan-fp4        | BACKEND=vulkan                                                     | --clients 1,2
-vulkan-udq4-np1   | BACKEND=vulkan MODEL_FILE=Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf MTP_FILE=mtp-Qwen3.8-Flash-Next-Q8_0.gguf KV_DTYPE=f16 UBATCH=4096 PARALLEL=1 FORCE=1 | --clients 1

@@ -62,5 +62,9 @@ esac
 # ── Misc ─────────────────────────────────────────────────────────────────────
 : "${EXTRA_ARGS:=}"                    # appended to llama-server; they win over the above
 : "${READY_TIMEOUT:=1200}"             # seconds start.sh waits for /health
-: "${RAM_RESERVE_GIB:=10}"             # RAM kept for the system when choosing PARALLEL=auto (GTT is carved out of RAM)
-: "${GTT_MARGIN_GIB:=1}"               # start.sh stops the server if GTT gets this close to its limit while loading
+# GPU memory, measured with bench/memory.sh (f16 KV, ubatch 2048, MTP and vision on, n-gram table on disk):
+: "${MODEL_GIB:=79.4}"                 # the model, its draft head and vision tower
+: "${COMPUTE_GIB:=6.5}"                # compute buffers; they barely grow with PARALLEL
+: "${KV_GIB_PER_262K:=7.8}"            # KV and recurrent state of one 262,144-token window
+: "${RAM_RESERVE_GIB:=10}"             # RAM kept for the OS (GTT is carved out of RAM); Mia's DGX Spark recipe keeps 9 GiB
+: "${GTT_MARGIN_GIB:=2}"               # the memory plan stays this far under the GTT limit

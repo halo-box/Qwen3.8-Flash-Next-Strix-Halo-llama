@@ -32,7 +32,9 @@ if ((vram > 4)); then
     bad "the BIOS gives the GPU a ${vram} GiB carve-out: set UMA / dedicated graphics memory to its minimum; this recipe uses GTT, which the carve-out takes from"
 else ok "BIOS carve-out ${vram} GiB"; fi
 ((ram >= 128)) && ok "${ram} GB RAM" || bad "${ram} GB RAM: the model needs a 128 GB Strix Halo"
-gtt_gib=$((ram - 8))
+gtt_gib=$(awk '/MemTotal/{print int($2 / 2^20) - 10}' /proc/meminfo)
+cma=$(awk '/CmaFree/{print int($2 / 2^20)}' /proc/meminfo)
+((cma > 2)) && note "the kernel counts ${cma} GiB of RAM as CMA-free (CmaTotal $(awk '/CmaTotal/{print int($2/2^20)}' /proc/meminfo) GiB): GPU pages cannot use it, so the server gets ~${cma} GiB less than GTT allows"
 WANT_PARAMS=(amd_iommu=off "ttm.pages_limit=$((gtt_gib * 262144))" "amdgpu.gttsize=$((gtt_gib * 1024))")
 
 echo "Host tools"

@@ -1,7 +1,0 @@
-# v1.0.0, ROCm, Agention ROCmFP4 v2: the recipe defaults, then one change at a time.
-rocm-fp4-np1      | BACKEND=rocm PARALLEL=1                                            | --clients "" --prefill ""
-rocm-fp4          | BACKEND=rocm                                                       | --clients 1,2,4
-rocm-fp4-f16kv    | BACKEND=rocm KV_DTYPE=f16                                          | --clients 1,2,4
-# Retained PM4 (pwilkin/rocm-systems) against the official stock-runtime image: kyuz0's PM4 build of strix-llama
-# master, ROCm 10.0. Record its engine commit first: docker run --rm <image> cat /opt/strix/versions.txt
-rocm-pm4-kyuz0    | BACKEND=rocm IMAGE=docker.io/kyuz0/amd-strix-halo-toolboxes:rocm-10.0-strix-llama SERVER_BIN=llama-server | --clients 1,2,4

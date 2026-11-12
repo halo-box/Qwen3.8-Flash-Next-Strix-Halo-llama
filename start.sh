@@ -30,14 +30,18 @@ GTT_USED=$STRIX_SYSFS/mem_info_gtt_used
 GTT_TOTAL=$STRIX_SYSFS/mem_info_gtt_total
 
 # ── Memory plan ──────────────────────────────────────────────────────────────
-# GTT the server takes, measured at the defaults (q8_0 KV, ubatch 2048, MTP, vision, 262k
-# windows): one slot, plus each further slot. GTT is carved out of RAM, so the plan keeps
-# RAM_RESERVE_GIB of RAM for the system as well as staying under the GTT limit.
-case "$BACKEND" in rocm) BASE_GIB=87.4 SLOT_GIB=4.2 ;; *) BASE_GIB=91.0 SLOT_GIB=6.3 ;; esac
+# GTT the server takes (bench/memory.sh): the model with its draft head and vision tower,
+# compute buffers that barely grow with the slots, and each slot's KV. GTT is carved out of
+# RAM, and a GPU that fills GTT up to its limit has OOM-killed host services on this
+# hardware, so the plan stays GTT_MARGIN_GIB under the limit and keeps RAM_RESERVE_GIB of RAM.
+# RAM the kernel counts as CMA-free takes only movable pages, never GPU pages: some kernels
+# report ~13 GiB of it on Strix Halo, and that lowers the ceiling for the GPU.
 gtt_limit=$(awk '{print $1/2^30}' "$GTT_TOTAL")
 ram=$(awk '/MemTotal/{print $2/2^20}' /proc/meminfo)
-budget=$(awk -v g="$gtt_limit" -v r="$ram" -v m="$GTT_MARGIN_GIB" -v k="$RAM_RESERVE_GIB" 'BEGIN{a=g-m-1; b=r-k; print (a<b?a:b)}')
-estimate() { awk -v b="$BASE_GIB" -v s="$SLOT_GIB" -v p="$1" -v w="$CONTEXT_PER_SLOT" 'BEGIN{printf "%.1f", b + s*(p-1)*w/262144}'; }
+cma_free=$(awk '/CmaFree/{print $2/2^20}' /proc/meminfo)
+budget=$(awk -v g="$gtt_limit" -v r="$ram" -v m="$GTT_MARGIN_GIB" -v k="$RAM_RESERVE_GIB" -v c="${cma_free:-0}" \
+    'BEGIN{a=g-m; b=r-k; d=r-c-8; x=(a<b?a:b); printf "%.1f", (x<d?x:d)}')
+estimate() { awk -v b="$MODEL_GIB" -v c="$COMPUTE_GIB" -v s="$KV_GIB_PER_262K" -v p="$1" -v w="$CONTEXT_PER_SLOT" 'BEGIN{printf "%.1f", b + c + s*p*w/262144}'; }
 fits() { awk -v e="$(estimate "$1")" -v b="$budget" 'BEGIN{exit !(e <= b)}'; }
 if [[ "$PARALLEL" == auto ]]; then
     PARALLEL=0
@@ -151,19 +155,20 @@ until curl -sf "http://$HOST:$PORT/health" >/dev/null 2>&1; do
     [[ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null)" == true ]] \
         || { docker logs --tail 30 "$CONTAINER_NAME" >&2; die "the server stopped while loading"; }
     ((SECONDS - t0 < READY_TIMEOUT)) || die "not ready after ${READY_TIMEOUT}s"
-    # Past the ttm.pages_limit ceiling TTM swaps GPU buffers to shmem, and with swap
-    # full the kernel OOM-kills host services instead of failing the allocation.
-    gtt=$(awk '{print int($1/1048576)}' "$GTT_USED") gtt_total=$(awk '{print int($1/1048576)}' "$GTT_TOTAL")
-    if ((gtt > gtt_total - GTT_MARGIN_GIB * 1024)); then
-        docker stop -t 5 "$CONTAINER_NAME" >/dev/null 2>&1 || true
-        die "stopped: GTT reached $((gtt / 1024)) of $((gtt_total / 1024)) GiB while loading. Lower CONTEXT or PARALLEL."
+    # Vulkan fills GTT pages as they are first touched, past any allocation-time check; near
+    # the GTT limit the kernel runs out of RAM and OOM-kills host services. Kill at once.
+    gtt=$(awk '{print int($1/1048576)}' "$GTT_USED")
+    avail=$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)
+    if ((gtt > ${budget%.*} * 1024 + 1024 || avail < 4096)); then
+        docker kill "$CONTAINER_NAME" >/dev/null 2>&1 || true
+        die "killed: GTT reached $((gtt / 1024)) GiB (budget ${budget}), MemAvailable $((avail / 1024)) GiB, while loading. Lower PARALLEL or CONTEXT_PER_SLOT."
     fi
     if ((SECONDS - t0 >= next)); then
         printf '  %4ds  %5.1f of ~%s GiB loaded (%d%%)\n' $((SECONDS - t0)) "$(awk '{print $1/2^30}' "$GTT_USED")" "$EST_GIB" \
             "$(awk -v e="$EST_GIB" '{printf "%d", 100*$1/2^30/e}' "$GTT_USED")"
         next=$((next + 10))
     fi
-    sleep 2
+    sleep 0.5
 done
 kill $LOGPID 2>/dev/null || true
 echo "  ready in $((SECONDS - t0))s, $(awk '{printf "%.1f",$1/2^30}' "$GTT_USED") of $(awk '{printf "%.0f",$1/2^30}' "$GTT_TOTAL") GiB GTT in use"

@@ -1,0 +1,7 @@
+# ROCm, Agention ROCmFP4 v2, one 262k slot: memory, then one change at a time against the defaults.
+rocm-mem-np1  | BACKEND=rocm PARALLEL=1                                          | --clients "" --prefill ""
+rocm-mem-np2  | BACKEND=rocm PARALLEL=2                                          | --clients "" --prefill ""
+rocm-q8kv     | BACKEND=rocm PARALLEL=1                                          | --clients 1 --prefill 8192,32768
+rocm-f16kv    | BACKEND=rocm PARALLEL=1 KV_DTYPE=f16                             | --clients 1 --prefill 8192,32768
+rocm-ub4096   | BACKEND=rocm PARALLEL=1 UBATCH=4096                              | --clients 1 --prefill 8192,32768
+rocm-mtpq8    | BACKEND=rocm PARALLEL=1 MTP_FILE=mtp-Qwen3.8-Flash-Next-Q8_0.gguf | --clients 1 --prefill ""

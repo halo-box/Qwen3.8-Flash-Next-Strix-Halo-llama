@@ -1,0 +1,8 @@
+# The v1.0.0 release recipe's model and head (unsloth UD-Q4_K_XL, Q8_0 MTP) with its own settings (40k, ub 4096, f16 KV),
+# then the recipe's q8_0 KV; Vulkan for both models; then retained PM4 (kyuz0's strix-llama build, ROCm 10.0).
+rocm-udq4-release  | BACKEND=rocm PARALLEL=1 CONTEXT_PER_SLOT=40960 UBATCH=4096 KV_DTYPE=f16 MODEL_FILE=Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf MTP_FILE=mtp-Qwen3.8-Flash-Next-Q8_0.gguf FORCE=1 | --clients 1 --prefill 8192,32768
+rocm-udq4-q8kv     | BACKEND=rocm PARALLEL=1 CONTEXT_PER_SLOT=40960 UBATCH=4096 MODEL_FILE=Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf MTP_FILE=mtp-Qwen3.8-Flash-Next-Q8_0.gguf FORCE=1 | --clients 1 --prefill 8192,32768
+rocm-fp4-40k-ub4096 | BACKEND=rocm PARALLEL=1 CONTEXT_PER_SLOT=40960 UBATCH=4096 FORCE=1 | --clients 1 --prefill 8192,32768
+vulkan-fp4         | BACKEND=vulkan PARALLEL=1 FORCE=1 | --clients 1 --prefill 8192,32768
+vulkan-udq4-release | BACKEND=vulkan PARALLEL=1 CONTEXT_PER_SLOT=40960 UBATCH=4096 KV_DTYPE=f16 MODEL_FILE=Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf MTP_FILE=mtp-Qwen3.8-Flash-Next-Q8_0.gguf FORCE=1 | --clients 1 --prefill 8192,32768
+rocm-pm4-kyuz0     | BACKEND=rocm PARALLEL=1 IMAGE=docker.io/kyuz0/amd-strix-halo-toolboxes:rocm-10.0-strix-llama SERVER_BIN=llama-server FORCE=1 | --clients 1 --prefill 8192,32768

@@ -1,3 +1,0 @@
-# The v1.0.0 release recipe's model and head (unsloth UD-Q4_K_XL, Q8_0 MTP), f16 KV, ubatch 4096.
-rocm-udq4-np1     | BACKEND=rocm MODEL_FILE=Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf MTP_FILE=mtp-Qwen3.8-Flash-Next-Q8_0.gguf KV_DTYPE=f16 UBATCH=4096 PARALLEL=1 FORCE=1 | --clients 1
-rocm-udq4-np1-q8  | BACKEND=rocm MODEL_FILE=Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf MTP_FILE=mtp-Qwen3.8-Flash-Next-Q8_0.gguf UBATCH=4096 PARALLEL=1 FORCE=1 | --clients 1
