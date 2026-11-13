@@ -3,7 +3,7 @@
 
   tests/check.py                   chat, streaming, tool call, image, a request of the window's size refused
   tests/check.py --window          also a request that fills the window exactly is served (slow, ~20 min)
-  tests/check.py --long N          also N concurrent ~200k-token requests (every slot its own window; slow)
+  tests/check.py --long N          also N concurrent requests of ~3/4 of a window each (every slot its own window; slow)
 
 Exits non-zero if any check fails.
 """
@@ -25,7 +25,7 @@ print = functools.partial(print, flush=True)  # noqa: A001 - progress shows unde
 p = argparse.ArgumentParser()
 p.add_argument("--url", default="http://127.0.0.1:8080")
 p.add_argument("--window", action="store_true", help="one request that fills the slot's window exactly")
-p.add_argument("--long", type=int, default=0, help="concurrent ~200k-token requests to run")
+p.add_argument("--long", type=int, default=0, help="concurrent requests of ~3/4 of a window each")
 a = p.parse_args()
 BASE = a.url.rstrip("/")
 failed = []
@@ -167,7 +167,8 @@ def t_window():
 
 
 def t_long(n):
-    prompts = [synthetic(200_000, 100 + i) + "\n\nWhat is the first word above? One word." for i in range(n)]
+    size = slot_ctx() * 3 // 4
+    prompts = [synthetic(size, 100 + i) + "\n\nWhat is the first word above? One word." for i in range(n)]
     out, errs = [None] * n, []
 
     def run(i):
@@ -180,7 +181,7 @@ def t_long(n):
     [t.start() for t in ts]
     [t.join() for t in ts]
     assert not errs, "; ".join(errs)
-    return f"{n} x ~200k tokens completed together"
+    return f"{n} x ~{size // 1000}k tokens completed together"
 
 
 print(f"checking {BASE}")

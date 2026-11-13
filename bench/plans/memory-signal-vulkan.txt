@@ -1,4 +1,0 @@
-# Signal AP-Q4_K_XL, Agention Q8_0 MTP, q8_0 KV on the maskless QSA path (#271), vision on, n-gram table on disk. Smallest first.
-vulkan q8 1x262k | BACKEND=vulkan PARALLEL=1 CONTEXT_PER_SLOT=262144
-vulkan q8 2x262k | BACKEND=vulkan PARALLEL=2 CONTEXT_PER_SLOT=262144
-vulkan q8 4x262k | BACKEND=vulkan PARALLEL=4 CONTEXT_PER_SLOT=262144

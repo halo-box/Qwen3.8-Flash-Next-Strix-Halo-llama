@@ -1,0 +1,5 @@
+# Where prefill goes: the v1.0.0 release recipe's settings (UD-Q4_K_XL, ROCm, 40k, ubatch 4096, f16, 1 request) against AgentionAI's Signal.
+pg-ud-40k-ub4096      | BACKEND=rocm PARALLEL=1 CONTEXT_PER_SLOT=40960 UBATCH=4096 | --clients "" --prefill 8192,32768
+pg-signal-40k-ub4096  | BACKEND=rocm PARALLEL=1 CONTEXT_PER_SLOT=40960 UBATCH=4096 MODEL_FILE=Signal-3.8-Flash-Next-AP-Q4_K_XL.gguf MTP_FILE=Qwen3.8-Flash-Next-MTP-Q8_0.gguf MODEL_GIB=70.1 | --clients "" --prefill 8192,32768
+pg-signal-262k-ub4096 | BACKEND=rocm PARALLEL=1 CONTEXT_PER_SLOT=262144 UBATCH=4096 MODEL_FILE=Signal-3.8-Flash-Next-AP-Q4_K_XL.gguf MTP_FILE=Qwen3.8-Flash-Next-MTP-Q8_0.gguf MODEL_GIB=70.1 | --clients "" --prefill 8192,32768
+pg-signal-262k-ub2048 | BACKEND=rocm PARALLEL=1 CONTEXT_PER_SLOT=262144 UBATCH=2048 MODEL_FILE=Signal-3.8-Flash-Next-AP-Q4_K_XL.gguf MTP_FILE=Qwen3.8-Flash-Next-MTP-Q8_0.gguf MODEL_GIB=70.1 | --clients "" --prefill 8192,32768

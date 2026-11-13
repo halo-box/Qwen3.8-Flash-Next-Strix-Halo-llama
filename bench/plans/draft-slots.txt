@@ -1,3 +1,0 @@
-# Vulkan default (4 x 262k): draft only while at most N streams are busy; the default drafts at any load.
-vk-draft-slots-1 | BACKEND=vulkan LLAMA_ARG_SPEC_DRAFT_MAX_SLOTS=1 | --clients 1,2,4 --repeat 3 --prefill ""
-vk-draft-slots-2 | BACKEND=vulkan LLAMA_ARG_SPEC_DRAFT_MAX_SLOTS=2 | --clients 1,2,4 --repeat 3 --prefill ""

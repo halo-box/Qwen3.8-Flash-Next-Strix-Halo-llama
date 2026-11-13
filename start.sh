@@ -40,9 +40,15 @@ gtt_limit=$(awk '{print $1/2^30}' "$GTT_TOTAL")
 ram=$(awk '/MemTotal/{print $2/2^20}' /proc/meminfo)
 cma_free=$(awk '/CmaFree/{print $2/2^20}' /proc/meminfo)
 budget=$(awk -v g="$gtt_limit" -v r="$ram" -v m="$GTT_MARGIN_GIB" -v k="$RAM_RESERVE_GIB" -v c="${cma_free:-0}" \
-    'BEGIN{a=g-m; b=r-k; d=r-c-8; x=(a<b?a:b); printf "%.1f", (x<d?x:d)}')
+    'BEGIN{a=g-m; b=r-k; d=r-c-6; x=(a<b?a:b); printf "%.1f", (x<d?x:d)}')
 estimate() { awk -v b="$MODEL_GIB" -v c="$COMPUTE_GIB" -v s="$KV_GIB_PER_262K" -v p="$1" -v w="$CONTEXT_PER_SLOT" 'BEGIN{printf "%.1f", b + c + s*p*w/262144}'; }
 fits() { awk -v e="$(estimate "$1")" -v b="$budget" 'BEGIN{exit !(e <= b)}'; }
+if [[ "$CONTEXT_PER_SLOT" == auto ]]; then
+    [[ "$PARALLEL" != auto ]] || { echo "Error: set PARALLEL or CONTEXT_PER_SLOT; both cannot be auto" >&2; exit 1; }
+    CONTEXT_PER_SLOT=$(awk -v g="$budget" -v b="$MODEL_GIB" -v c="$COMPUTE_GIB" -v s="$KV_GIB_PER_262K" -v p="$PARALLEL" \
+        'BEGIN{w = int((g - b - c) / (s * p) * 16) * 16384; print (w > 262144 ? 262144 : w)}')
+    ((CONTEXT_PER_SLOT >= 16384)) || { echo "Error: $PARALLEL request(s) do not fit in ${budget} GiB at any window: lower PARALLEL" >&2; exit 1; }
+fi
 if [[ "$PARALLEL" == auto ]]; then
     PARALLEL=0
     for p in 1 2 3 4 5 6 7 8; do fits $p && PARALLEL=$p; done

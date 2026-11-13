@@ -1,0 +1,4 @@
+# The README memory table: UD-Q4_K_XL, ubatch 4096, MTP and vision on. Smallest first; bench/memory.sh stops at the first that does not load.
+rocm f16 1x262k   | BACKEND=rocm PARALLEL=1 CONTEXT_PER_SLOT=262144
+vulkan q8 3x262k  | BACKEND=vulkan PARALLEL=3 CONTEXT_PER_SLOT=262144
+vulkan q8 4x196k  | BACKEND=vulkan PARALLEL=4 CONTEXT_PER_SLOT=196608

@@ -26,18 +26,23 @@ fetch() {  # fetch FILE URL SIZE SHA256 DEFAULT_NAME; only the default files are
     fi
 }
 mkdir -p "$MODEL_DIR"
-fetch "$MODEL_FILE" \
-    https://huggingface.co/agentionai/Signal-3.8-Flash-Next-GGUF/resolve/main/AP-Q4_K_XL/Signal-3.8-Flash-Next-AP-Q4_K_XL.gguf \
-    101142769984 427a7a10dd5a98d77c71be62a89d14e7408fc61a84c6efe889393852282cd3c6 \
-    Signal-3.8-Flash-Next-AP-Q4_K_XL.gguf
-fetch "$MTP_FILE" \
-    https://huggingface.co/agentionai/Qwen3.8-Flash-Next-MTP-Q8_0-GGUF/resolve/main/Qwen3.8-Flash-Next-MTP-Q8_0.gguf \
-    4135893408 554f3d1230cc1a8e2d63e3322f113218f3e052156d98328e9f21fb97db48af7f \
-    Qwen3.8-Flash-Next-MTP-Q8_0.gguf
+UD=Qwen3.8-Flash-Next-UD-Q4_K_XL
+fetch "$MODEL_FILE" https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF/resolve/main/UD-Q4_K_XL/$UD-00001-of-00004.gguf \
+    10946618 acc44040f74d0e55fb89c3967056cce5dbda1bcc52e909c3ba6fc72b5e9c0858 $UD-00001-of-00004.gguf
+if [[ "$MODEL_FILE" == $UD-00001-of-00004.gguf ]]; then
+    fetch $UD-00002-of-00004.gguf https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF/resolve/main/UD-Q4_K_XL/$UD-00002-of-00004.gguf \
+        49720539552 45792ae869072d8229384c51c7c73dd959e191505252b41dd71852d9746f5ce4 $UD-00002-of-00004.gguf
+    fetch $UD-00003-of-00004.gguf https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF/resolve/main/UD-Q4_K_XL/$UD-00003-of-00004.gguf \
+        32803030176 8c76e79d444b16a663d9c8db54e585ed3b1da13eebd2619c37b0c355da803c82 $UD-00003-of-00004.gguf
+    fetch $UD-00004-of-00004.gguf https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF/resolve/main/UD-Q4_K_XL/$UD-00004-of-00004.gguf \
+        28800138432 5de8b5dbf89409acc39468decafd4a4a95b13c29d88a14b0356107897829ec36 $UD-00004-of-00004.gguf
+fi
+fetch "$MTP_FILE" https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF/resolve/main/MTP/mtp-Qwen3.8-Flash-Next-Q8_0.gguf \
+    4137429120 58a47d6a216307e9b97172d5bfdc3436a8994b632f5e436b9bb6edf8951da8d1 mtp-Qwen3.8-Flash-Next-Q8_0.gguf
 
 if [[ "$VISION" == 1 ]]; then
     fetch "$MMPROJ_FILE" \
-        https://huggingface.co/agentionai/Signal-3.8-Flash-Next-GGUF/resolve/main/mmproj-F16.gguf \
+        https://huggingface.co/agentionai/Qwen3.8-Flash-Next-ROCmFP4-FAST-imatrix-GGUF/resolve/main/mmproj/mmproj-Qwen3.8-Flash-Next-f16.gguf \
         904004128 f456cd796fdbdef0cadb22710b54e0071b6cdf22c07963365baa898267aec517 \
         mmproj-Qwen3.8-Flash-Next-f16.gguf
 fi

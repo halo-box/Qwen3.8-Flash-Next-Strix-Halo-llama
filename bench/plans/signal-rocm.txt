@@ -1,6 +1,0 @@
-# Signal on ROCm (f16 KV): 3 against 4 MTP drafts, decode twice each; then the default layout in full.
-rocm-n3-a   | BACKEND=rocm PARALLEL=1 MTP_DRAFT_N=3 | --clients 1 --prefill ""
-rocm-n4-a   | BACKEND=rocm PARALLEL=1 MTP_DRAFT_N=4 | --clients 1 --prefill ""
-rocm-n3-b   | BACKEND=rocm PARALLEL=1 MTP_DRAFT_N=3 | --clients 1 --prefill ""
-rocm-n4-b   | BACKEND=rocm PARALLEL=1 MTP_DRAFT_N=4 | --clients 1 --prefill ""
-rocm        | BACKEND=rocm                         | --clients 1,2
