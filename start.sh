@@ -155,7 +155,7 @@ echo "  $BACKEND, $PARALLEL slot(s) of $CONTEXT_PER_SLOT tokens, $KV_DTYPE KV, v
 # ── 4. Loading ───────────────────────────────────────────────────────────────
 step 4/5 "Loading"
 t0=$SECONDS
-docker logs -f "$CONTAINER_NAME" 2>&1 | grep --line-buffered -E ' E |error|failed' &
+docker logs -f "$CONTAINER_NAME" 2>&1 | awk '/ E |error|failed/ {print; fflush()}' &
 LOGPID=$!
 trap 'kill $LOGPID 2>/dev/null || true' EXIT
 next=10

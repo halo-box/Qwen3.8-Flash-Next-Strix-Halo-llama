@@ -13,7 +13,7 @@ fetch() {  # fetch FILE URL SIZE SHA256 DEFAULT_NAME; only the default files are
     fi
     if [[ ! -f "$f" || $(stat -c %s "$f") -ne $size ]]; then
         local have=0; [[ -f "$f" ]] && have=$(stat -c %s "$f")
-        local free; free=$(df -B1 --output=avail "$MODEL_DIR" | tail -1)
+        local free; free=$(df -Pk "$MODEL_DIR" | awk 'NR == 2 {print $4 * 1024}')
         ((free > size - have + 2**30)) || { echo "Error: not enough disk in $MODEL_DIR for $1" >&2; exit 1; }
         echo "downloading $1 ($((size / 2**30)) GiB, resumes if interrupted)"
         curl -fL --progress-bar --retry 10 --retry-delay 5 -C - -o "$f" "$url"

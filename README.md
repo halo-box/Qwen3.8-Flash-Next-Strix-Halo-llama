@@ -114,8 +114,9 @@ Run on this machine at the defaults with the pinned images, all passing:
 | GMKtec EVO-X2 (Ryzen AI Max+ 395, 128 GB) | Ubuntu 26.04, 7.0.0-43 | 107 GiB | every check above; a fresh clone runs the Quick start as written |
 
 Covered without the hardware: `tests/host_test.sh` (the gfx1151 found among other GPUs through KFD's topology),
-`tests/bootloader_test.sh` (the kernel-parameter step on rpm-ostree, kernelstub, grubby, Debian and Arch GRUB, and
-systemd-boot), and `./setup.sh --check` in Ubuntu 26.04, Debian 13, Fedora 44 and Arch containers. Not yet run: other
+`tests/bootloader_test.sh` (the kernel-parameter step on rpm-ostree, kernelstub, grubby, Debian and Arch GRUB,
+extlinux and systemd-boot), and `./setup.sh --check` in Ubuntu 26.04, Debian 13, Fedora 44, Arch and Alpine 3
+(BusyBox, with bash added) containers. Not yet run: other
 vendors' Strix Halo boxes, other distros and kernels on the hardware, a second GPU in the same machine. The memory plan
 reads each host's own GTT limit, `MemTotal` and `CmaFree`, so a host with more usable memory gets a larger budget,
 not a different configuration. To add a host, open an issue with the output of `./setup.sh --check`, `./start.sh`
@@ -128,10 +129,11 @@ and `python3 tests/check.py --window`.
 - The BIOS UMA / dedicated graphics memory at its minimum: the GPU uses GTT, which a carve-out takes from.
 - GTT raised to `MemTotal` minus 10 GiB (`ttm.pages_limit`, `amdgpu.gttsize`; Mia's DGX Spark recipe keeps 9 GiB
   free) and `amd_iommu=off`. `./setup.sh` works the values out from your RAM and adds them with rpm-ostree (Bazzite,
-  Silverblue), kernelstub (Pop!_OS), grubby (Fedora), GRUB (Debian, Ubuntu, Arch) or systemd-boot, asking first;
+  Silverblue), kernelstub (Pop!_OS), grubby (Fedora), GRUB (Debian, Ubuntu, Arch), extlinux (Alpine) or systemd-boot, asking first;
   anything else is done by hand.
 - Linux with the amdgpu driver. Tested on kernel 7.0 (Ubuntu 26.04); older kernels are untested.
-- Docker, with your user in the `docker` group; `curl`, `python3`, `sha256sum` and `pgrep` on the host.
+- Docker, with your user in the `docker` group; `bash`, `curl`, `python3`, `sha256sum` and `pgrep` on the host
+  (Alpine: `apk add bash curl python3 docker`; BusyBox's tools are enough for the rest).
 - ~115 GB of free disk for the model files, plus the image: 0.3 GiB (Vulkan) or 8.6 GiB (ROCm) to download.
 
 ## Quick start

@@ -17,7 +17,7 @@ mkdir -p /stub /etc/default /boot
 printf '#!/bin/sh\nexec "\$@"\n' > /usr/local/bin/sudo; chmod +x /usr/local/bin/sudo
 stub() { printf '#!/bin/sh\necho "\$(basename \$0) \$*" >> /tmp/calls\n' > /stub/\$1; chmod +x /stub/\$1; }
 $2
-chown -R 1000:1000 /etc/default /boot /stub; touch /tmp/calls; chown 1000 /tmp/calls
+chown -R 1000:1000 /etc/default /boot /stub /etc;  touch /tmp/calls; chown 1000 /tmp/calls
 yes | setpriv --reuid 1000 --regid 1000 --clear-groups env HOME=/tmp USER=t PATH=/stub:\$PATH /recipe/setup.sh >/tmp/setup.log 2>&1 || true
 $3
 EOF
@@ -40,6 +40,9 @@ run "update-grub (Debian, Ubuntu)" \
 run "grub-mkconfig (Arch)" \
     'stub grub-mkconfig; printf "GRUB_TIMEOUT=5\nGRUB_CMDLINE_LINUX_DEFAULT=\"quiet\"\n" > /etc/default/grub' \
     'grep -q "^GRUB_CMDLINE_LINUX_DEFAULT=\"quiet .*amdgpu.gttsize=[0-9]*\"$" /etc/default/grub && ls /etc/default/grub.bak.* >/dev/null && grep -q "^grub-mkconfig -o /boot/grub/grub.cfg" /tmp/calls && echo PASS'
+run "extlinux (Alpine)" \
+    'stub update-extlinux; printf "default_kernel_opts=\"quiet rootfstype=ext4\"\nmodules=sd-mod\n" > /etc/update-extlinux.conf' \
+    'grep -q "^default_kernel_opts=\"quiet rootfstype=ext4 .*amdgpu.gttsize=[0-9]*\"$" /etc/update-extlinux.conf && ls /etc/update-extlinux.conf.bak.* >/dev/null && grep -q "^update-extlinux" /tmp/calls && echo PASS'
 run "systemd-boot" \
     'mkdir -p /boot/loader/entries; printf "title Linux\noptions root=UUID=x rw\n" > /boot/loader/entries/linux.conf' \
     'grep -q "^options root=UUID=x rw .*amdgpu.gttsize=" /boot/loader/entries/linux.conf && ls /boot/loader/entries/linux.conf.bak.* >/dev/null && echo PASS'

@@ -95,13 +95,17 @@ if ((${#missing[@]})); then
             sudo cp /etc/default/grub "/etc/default/grub.bak.$(date +%s)"
             sudo sed -i "s|^GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)\"|GRUB_CMDLINE_LINUX_DEFAULT=\"\1 ${missing[*]}\"|" /etc/default/grub
             sudo grub-mkconfig -o /boot/grub/grub.cfg
+        elif [[ -f /etc/update-extlinux.conf ]] && command -v update-extlinux >/dev/null; then
+            sudo cp /etc/update-extlinux.conf "/etc/update-extlinux.conf.bak.$(date +%s)"
+            sudo sed -i "s|^default_kernel_opts=\"\(.*\)\"|default_kernel_opts=\"\1 ${missing[*]}\"|" /etc/update-extlinux.conf
+            sudo update-extlinux
         elif [[ -d /boot/loader/entries ]]; then
             for e in /boot/loader/entries/*.conf; do
                 sudo cp "$e" "$e.bak.$(date +%s)"
                 sudo sed -i "/^options /s|\$| ${missing[*]}|" "$e"
             done
         else
-            bad "no rpm-ostree, kernelstub, grubby, GRUB or systemd-boot found: add ${missing[*]} to your boot loader by hand"
+            bad "no rpm-ostree, kernelstub, grubby, GRUB, extlinux or systemd-boot found: add ${missing[*]} to your boot loader by hand"
         fi
         REBOOT=1
     fi
