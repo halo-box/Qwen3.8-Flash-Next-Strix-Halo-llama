@@ -105,6 +105,25 @@ sudo iptables -I DOCKER-USER -p tcp --dport 8080 ! -s 192.168.0.0/16 -j DROP
 last ten minutes, MTP draft acceptance, each request's progress and KV use, the last requests and the configuration.
 It asks for the API key when one is set. `http://<host>:8080/metrics` serves the same counters to Prometheus.
 
+Three code requests arriving at once, 20 seconds. The prompts prefill at up to 1,743 tok/s, then all three generate:
+
+<p align="center"><img src="media/dashboard-video.webp" alt="20 seconds of the dashboard while three requests prefill and then generate" width="100%"></p>
+
+A long prompt half way through its prefill, at 1,238 tok/s. The bar shows 49.2k of the request's 262.1k window:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="media/long-prompt-dark.png">
+  <img src="media/long-prompt-light.png" alt="The dashboard while one request prefills a 49k-token prompt" width="100%">
+</picture>
+
+The configuration the server reports, which is the recipe's: three 262.1k windows, a q8_0 KV cache, MTP with three
+drafts, and the n-gram table read from disk:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="media/configuration-dark.png">
+  <img src="media/configuration-light.png" alt="The dashboard's model and configuration panel" width="60%">
+</picture>
+
 ## Performance
 
 These are the defaults: 3 × 262,144-token windows on Vulkan and 1 on ROCm. The machine is a GMKtec EVO-X2 (Ryzen AI
