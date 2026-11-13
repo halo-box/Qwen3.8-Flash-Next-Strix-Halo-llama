@@ -183,6 +183,28 @@ curl -s http://127.0.0.1:8080/v1/chat/completions -H 'Content-Type: application/
 }'
 ```
 
+## Serving on the network and watching it
+
+The server listens on `127.0.0.1:8080`: only the machine itself reaches it. To serve other machines, set an API key
+and the address to listen on, then restart:
+
+```bash
+API_KEY=$(openssl rand -hex 24) HOST=0.0.0.0 ./start.sh restart     # or put both in .env
+```
+
+No firewall rule is needed to open the port, and one does not close it: Docker publishes the port with its own
+rules, ahead of ufw (Ubuntu; off by default) and firewalld (Fedora; on by default). To limit who can connect, set
+`HOST` to one of the machine's addresses instead of `0.0.0.0`, or add a rule to Docker's own chain, for example only
+the local network:
+
+```bash
+sudo iptables -I DOCKER-USER -p tcp --dport 8080 ! -s 192.168.0.0/16 -j DROP
+```
+
+The server's own dashboard is at `http://<host>:8080/dashboard`: decode and prefill speed live and over the last 10
+minutes, MTP acceptance, each request's progress and KV use, the last requests and the configuration. It asks for
+the API key when one is set. `http://<host>:8080/metrics` serves the same counters to Prometheus.
+
 ## What `./start.sh` does
 
 1. **Setup**: `scripts/prepare.sh` downloads whatever model file is missing and pulls the engine image.

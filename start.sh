@@ -122,6 +122,8 @@ CMD=(docker run -d --name "$CONTAINER_NAME"
      "$IMAGE" "${ARGS[@]}")
 
 if ((PRINT)); then printf '%q ' "${CMD[@]}"; echo; exit 0; fi
+[[ "$HOST" == 127.* || "$HOST" == localhost || -n "$API_KEY" ]] \
+    || echo "  warning: HOST=$HOST serves the network with no API_KEY: anyone who reaches the port can use the model" >&2
 
 # ── 3. Launch ────────────────────────────────────────────────────────────────
 step 3/5 "Launch"
