@@ -4,6 +4,7 @@ This recipe is glue around other people's work. Where a file, setting or idea ca
 
 ## Engine
 
+- `media/halo-box.png`: the Halo Box logo, from [halo-box/strix-llama.cpp](https://github.com/halo-box/strix-llama.cpp).
 - [halo-box/strix-llama.cpp](https://github.com/halo-box/strix-llama.cpp): the Strix Halo fork of llama.cpp this
   recipe serves with, from its own `server-rocm` and `server-vulkan` images (built from upstream's `.devops/`
   Dockerfiles). It includes [#150](https://github.com/halo-box/strix-llama.cpp/pull/150) by

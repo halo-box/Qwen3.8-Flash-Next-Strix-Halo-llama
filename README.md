@@ -1,3 +1,5 @@
+<p align="center"><img src="media/halo-box.png" alt="Halo Box" width="220"></p>
+
 <h1 align="center">Qwen3.8-Flash-Next on AMD Strix Halo (strix-llama.cpp)</h1>
 
 Serve **Qwen3.8-Flash-Next** (180B total, 6B active) from one AMD Strix Halo
@@ -207,6 +209,16 @@ The server's own dashboard is at `http://<host>:8080/dashboard`: decode and pref
 minutes, MTP acceptance, each request's progress and KV use, the last requests and the configuration. It asks for
 the API key when one is set. `http://<host>:8080/metrics` serves the same counters to Prometheus.
 
+Three requests decoding at once (the defaults, Vulkan): 49.5 tok/s together, 16.5 each, 71% of the drafted tokens
+accepted.
+
+<p align="center"><img src="media/dashboard-decode.png" alt="Dashboard: three slots generating" width="100%"></p>
+
+A 65k-token prompt prefilling at 1,139 tok/s on one slot. The two other requests wait while it runs: llama-server
+processes a prompt and the decoding requests one after the other, not side by side.
+
+<p align="center"><img src="media/dashboard-prefill.png" alt="Dashboard: one slot prefilling a long prompt" width="100%"></p>
+
 ## What `./start.sh` does
 
 1. **Setup**: `scripts/prepare.sh` downloads whatever model file is missing and pulls the engine image.
@@ -315,6 +327,9 @@ Results go to `results/sparkdash/<label>.md` and `.json`.
 - **Never load with `--load-mode mmap`** on this hardware: on Vulkan a later load in the same boot fails
   (`Couldn't update BO_VA (-12)` in `dmesg`) and can wedge the GPU driver until a reboot; on ROCm KFD refuses it.
   The recipe reads weights with `--load-mode none`, and the 22 GB n-gram table row by row (`--lazy-mode on-direct`).
+- **After many hours of GPU work in the same boot, a load this size can fail** (`Couldn't update BO_VA (-12)` in
+  `dmesg`) or leave the server stuck in the kernel (process state `D`, GTT held): the driver cannot get the small
+  unmovable allocations it needs for page tables. Rebooting fixes it; load the model early in a boot.
 - **Do not run a configuration past the memory plan** (`FORCE=1`) on Vulkan: it fills GTT pages as they are first
   touched, past any allocation-time check, and near the GTT limit the kernel OOM-kills host services before anything
   can stop it. ROCm refuses an allocation that does not fit.
