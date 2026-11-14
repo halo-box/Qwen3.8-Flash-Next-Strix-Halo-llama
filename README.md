@@ -107,7 +107,7 @@ It asks for the API key when one is set. `http://<host>:8080/metrics` serves the
 
 Three code requests arriving at once, 20 seconds. The prompts prefill at up to 1,743 tok/s, then all three generate:
 
-<p align="center"><img src="media/dashboard-video.webp" alt="20 seconds of the dashboard while three requests prefill and then generate" width="100%"></p>
+<p align="center"><img src="media/dashboard-video.gif" alt="20 seconds of the dashboard while three requests prefill and then generate" width="100%"></p>
 
 A long prompt half way through its prefill, at 1,238 tok/s. The bar shows 49.2k of the request's 262.1k window:
 
